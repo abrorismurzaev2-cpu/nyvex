@@ -97,7 +97,7 @@ export function openChat(id) {
   if (!c.messages || c.messages.length === 0) {
     renderWelcome();
   } else {
-    c.messages.forEach((m) => appendMessage(m.role, m.text, false));
+    c.messages.forEach((m) => appendMessage(m.role, m.text, false, m.thinking ? { thinking: m.thinking, thinkingMs: m.thinkingMs } : null));
   }
   const sc = $('chatScroll');
   if (sc) sc.scrollTop = sc.scrollHeight;
@@ -108,7 +108,7 @@ export function getCurrentChat() {
   return chats[currentChatId] || null;
 }
 
-export function addMessageToCurrent(role, text) {
+export function addMessageToCurrent(role, text, meta = null) {
   const chat = getCurrentChat();
   if (!chat) return;
   if (!chat.messages) chat.messages = [];
@@ -117,7 +117,10 @@ export function addMessageToCurrent(role, text) {
     const titleEl = $('chatTitle');
     if (titleEl) titleEl.textContent = chat.title;
   }
-  chat.messages.push({ role, text });
+  const msg = { role, text };
+  if (meta?.thinking) msg.thinking = meta.thinking;
+  if (meta?.thinkingMs != null) msg.thinkingMs = meta.thinkingMs;
+  chat.messages.push(msg);
   saveHistory();
   renderHistory();
 }

@@ -1,13 +1,13 @@
 {
   "name": "NYVEX — AI Chat",
   "short_name": "NYVEX",
-  "description": "Локальный AI-чат прямо в телефоне. Офлайн, без серверов.",
+  "description": "Локальный AI-чат. 7 дней бесплатно, офлайн, без серверов.",
   "start_url": "./app.html",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait-primary",
-  "background_color": "#0e0e11",
-  "theme_color": "#0e0e11",
+  "orientation": "portrait",
+  "background_color": "#0a0a0f",
+  "theme_color": "#0a0a0f",
   "lang": "ru",
   "icons": [
     {

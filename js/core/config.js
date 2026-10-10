@@ -1,49 +1,101 @@
 /**
  * NYVEX — core/config.js
- * Константы и настройки приложения
  */
-
 export const APP_NAME = 'NYVEX';
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
+export const PRICE_RUB = 290;
+export const TRIAL_DAYS = 7;
 
-/** Ключи localStorage */
 export const STORAGE_KEYS = {
   USER: 'nyvex_user',
   CHATS: 'nyvex_chats',
   SETTINGS: 'nyvex_settings',
   COOKIE_CONSENT: 'nyvex_cookie_consent',
+  MODEL_PREF: 'nyvex_model_pref',
+  TRIAL_NOTICE: 'nyvex_trial_notice',
 };
 
-/** Модель Transformers.js */
+/** Available models (Transformers.js / onnx-community) */
+export const MODELS = [
+  {
+    id: 'onnx-community/Qwen2.5-0.5B-Instruct',
+    name: 'Qwen2.5-0.5B',
+    sizeMB: 350,
+    speed: 5,
+    quality: 2,
+    desc: 'Быстрая, базовая',
+  },
+  {
+    id: 'onnx-community/Qwen2.5-1.5B-Instruct',
+    name: 'Qwen2.5-1.5B',
+    sizeMB: 900,
+    speed: 3,
+    quality: 3,
+    desc: 'Умнее, средняя',
+  },
+  {
+    id: 'Xenova/Qwen2.5-0.5B-Instruct',
+    name: 'Qwen2.5-0.5B (Xenova)',
+    sizeMB: 350,
+    speed: 5,
+    quality: 2,
+    desc: 'Альтернативный CDN',
+  },
+  {
+    id: 'onnx-community/Llama-3.2-1B-Instruct',
+    name: 'Llama 3.2 1B',
+    sizeMB: 800,
+    speed: 3,
+    quality: 3,
+    desc: 'Альтернатива',
+  },
+  {
+    id: 'onnx-community/Phi-3.5-mini-instruct',
+    name: 'Phi-3.5-mini',
+    sizeMB: 2300,
+    speed: 2,
+    quality: 4,
+    desc: 'Компактная умная',
+  },
+];
+
+export const DEFAULT_MODEL_ID = MODELS[0].id;
+
 export const MODEL = {
-  id: 'onnx-community/Qwen2.5-0.5B-Instruct',
+  id: DEFAULT_MODEL_ID,
   task: 'text-generation',
   dtype: 'q4',
-  maxNewTokens: 240,
+  maxNewTokens: 280,
   temperature: 0.7,
   topP: 0.9,
   repetitionPenalty: 1.1,
-  systemPrompt: 'Ты NYVEX — дружелюбный AI-помощник. Отвечай на русском кратко и по делу. Не выдумывай факты.',
+  systemPrompt: `Ты NYVEX — дружелюбный AI-помощник.
+Отвечай ВСЕГДА на том языке, на котором пишет пользователь.
+Если пользователь пишет по-русски — отвечай ТОЛЬКО по-русски.
+Если по-английски — только по-английски.
+Никогда не смешивай языки в одном ответе.
+Отвечай кратко и по делу. Не выдумывай факты.`,
+  thinkingSystemAdd: `Прежде чем ответить, подумай пошагово.
+Выведи рассуждения строго в тегах <thinking>...</thinking>,
+а финальный ответ строго в тегах <answer>...</answer>.`,
 };
 
-/** CDN и зеркала (основной → резерв) */
 export const CDN = {
   primary: 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2',
   mirrorHint: 'hf-mirror.com',
 };
 
-/** Лимиты */
 export const LIMITS = {
   nameMin: 2,
   nameMax: 30,
   passwordMin: 6,
   avatarMaxBytes: 3 * 1024 * 1024,
   chatTitleMax: 60,
-  historyContext: 4,
+  historyContext: 6,
 };
 
-/** Возраст */
 export const MIN_AGE = 13;
-
-/** Email regex */
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Shared orbital logo SVG path (stroke) */
+export const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/><path d="M12 3 L12 21"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>`;

@@ -175,6 +175,7 @@
           </button>
           <div class="chat-title" id="chatTitle">Новый чат</div>
           <div class="model-badge" id="modelBadge">nyvex</div>
+          <button type="button" class="trial-badge" id="trialBadge" title="Пробный период">7 дн</button>
         </div>
         <div class="chat-top-right">
           <button type="button" class="icon-btn" id="settingsBtn" title="Настройки" aria-label="Настройки">
@@ -193,6 +194,10 @@
       <div class="composer-wrap">
         <div class="composer">
           <textarea id="composerInput" placeholder="Напишите сообщение…" rows="1"></textarea>
+          <button type="button" class="comp-btn think-toggle" id="thinkToggle" title="Deep Thinking">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A4.5 4.5 0 0 0 5 6.5c0 1 .3 2 .9 2.7A4 4 0 0 0 5 12.5 4 4 0 0 0 6.5 15 4 4 0 0 0 6 17.5a4.5 4.5 0 0 0 3 4.2V22h1V2zM14.5 2A4.5 4.5 0 0 1 19 6.5c0 1-.3 2-.9 2.7A4 4 0 0 1 19 12.5 4 4 0 0 1 17.5 15 4 4 0 0 1 18 17.5a4.5 4.5 0 0 1-3 4.2V22h-1V2z"/></svg>
+            <span>Think</span>
+          </button>
           <button type="button" class="send-btn" id="sendBtn" title="Отправить" aria-label="Отправить">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
               <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
@@ -259,6 +264,21 @@
           </div>
         </div>
 
+        
+        <div class="setting-section-title">Подписка</div>
+        <div class="sub-block" id="subBlock">
+          <div class="sub-status" id="trialStatusLabel">Пробный период</div>
+          <div class="sub-progress"><div class="sub-progress-fill" id="trialProgress"></div></div>
+          <div class="sub-end" id="trialEndDate">—</div>
+          <div class="sub-actions">
+            <button type="button" class="btn btn-sm btn-primary" id="subscribeBtn">Оформить — 290 ₽/мес</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="cancelSubBtn">Отменить</button>
+          </div>
+        </div>
+
+        <div class="setting-section-title">Модели</div>
+        <div id="modelList" class="model-list"></div>
+
         <div class="setting-item" id="modelInfoBtn">
           <div class="setting-item-info">
             <div class="setting-item-title">Модель: <span id="modelName">Qwen2.5-0.5B</span></div>
@@ -320,6 +340,22 @@
           <span style="color:var(--dim);">Статус</span>
           <span style="color:#fff; font-weight:600;" id="miStatus">—</span>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="settings-panel" id="trialModal">
+    <div class="settings-window" style="max-width:400px;">
+      <div class="settings-head">
+        <h3 id="trialModalTitle">Пробный период</h3>
+        <button type="button" class="icon-btn" id="trialModalClose" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <p id="trialModalText" style="color:var(--dim);font-size:14px;line-height:1.55;margin-bottom:16px;">Оформите подписку.</p>
+        <button type="button" class="btn btn-primary" id="trialModalPay" style="width:100%;margin-bottom:8px;">Оформить — 290 ₽/мес</button>
+        <button type="button" class="btn btn-ghost" id="trialModalLater" style="width:100%;">Позже</button>
       </div>
     </div>
   </div>

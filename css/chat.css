@@ -1037,3 +1037,90 @@
     display: flex;
   }
 }
+
+
+/* Trial badge */
+.trial-badge {
+  padding: 5px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255,179,64,0.15);
+  color: var(--gold);
+  border: 1px solid rgba(255,179,64,0.4);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.trial-badge.warn { color: #ff8a5c; border-color: rgba(255,138,92,0.5); }
+.trial-badge.danger { color: var(--red); border-color: rgba(255,92,122,0.5); background: rgba(255,92,122,0.12); }
+.trial-badge.pro { color: var(--green); border-color: rgba(74,222,128,0.4); background: rgba(74,222,128,0.1); }
+
+/* Think toggle */
+.think-toggle {
+  width: auto;
+  padding: 0 12px;
+  gap: 6px;
+  border-radius: 11px;
+  height: 40px;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--dim);
+  font-size: 12.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+.think-toggle svg { width: 15px; height: 15px; }
+.think-toggle.on {
+  color: #b8a3ff;
+  background: linear-gradient(135deg, rgba(124,92,255,0.2), rgba(0,217,255,0.1));
+  border-color: rgba(124,92,255,0.45);
+}
+.think-toggle.on svg { animation: thinkSpin 3s linear infinite; }
+
+/* Think block */
+.think-block {
+  margin-bottom: 10px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(124,92,255,0.06), rgba(124,92,255,0.02));
+  border: 1px solid rgba(124,92,255,0.2);
+}
+.think-head {
+  width: 100%;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  min-height: 44px;
+}
+.think-icn {
+  width: 22px; height: 22px; border-radius: 6px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: #fff;
+}
+.think-icn svg { width: 12px; height: 12px; }
+.think-label { font-size: 12.5px; font-weight: 600; color: #b8a3ff; flex: 1; }
+.think-time { font-size: 11px; color: var(--dim-2); }
+.think-caret { color: var(--dim); transition: transform .2s; }
+.think-caret svg { width: 14px; height: 14px; }
+.think-block.collapsed .think-caret { transform: rotate(-90deg); }
+.think-body {
+  padding: 0 14px 12px 46px;
+  font-size: 13px; line-height: 1.7;
+  color: var(--dim); font-style: italic;
+  max-height: 800px; overflow: hidden;
+  transition: max-height .3s, padding .3s, opacity .3s;
+  white-space: pre-wrap;
+}
+.think-block.collapsed .think-body { max-height: 0; padding-top: 0; padding-bottom: 0; opacity: 0; }
+
+@media (max-width: 820px) {
+  .think-toggle span { display: none; }
+}

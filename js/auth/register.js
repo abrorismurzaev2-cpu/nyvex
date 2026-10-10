@@ -8,6 +8,8 @@ import { $, escapeHtml } from '../core/utils.js';
 import { EMAIL_RE, LIMITS, MIN_AGE } from '../core/config.js';
 import { showScreen } from '../core/router.js';
 import { loadUserUI } from './profile.js';
+import { ensureTrialOnUser } from '../core/trial.js';
+import { TRIAL_DAYS } from '../core/config.js';
 
 /** Callback after successful auth — set from main.js to avoid circular import */
 let onEnterApp = null;
@@ -168,15 +170,18 @@ async function onAuthSubmit() {
 
   try {
     if (isRegister) {
-      storage.setUser({
+      const now = Date.now();
+      storage.setUser(ensureTrialOnUser({
         email: emailEl.value.trim(),
         name: nameEl.value.trim().slice(0, LIMITS.nameMax),
         avatar: pendingAvatar,
-        plan: 'pro',
-        createdAt: Date.now(),
+        plan: 'trial',
+        createdAt: now,
+        trialStart: now,
+        trialEnd: now + TRIAL_DAYS * 24 * 60 * 60 * 1000,
         agreedTerms: true,
         ageConfirmed: true,
-      });
+      }));
     } else {
       const existing = storage.getUser();
       if (!existing) {
@@ -184,8 +189,10 @@ async function onAuthSubmit() {
           email: emailEl.value.trim(),
           name: emailEl.value.trim().split('@')[0],
           avatar: null,
-          plan: 'pro',
+          plan: 'trial',
           createdAt: Date.now(),
+          trialStart: Date.now(),
+          trialEnd: Date.now() + 7 * 24 * 60 * 60 * 1000,
         });
       }
     }

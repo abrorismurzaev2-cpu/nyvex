@@ -44,6 +44,7 @@
         <a href="#features">Возможности</a>
         <a href="#how">Как работает</a>
         <a href="#faq">FAQ</a>
+        <a href="downloads/nyvex.apk" class="btn btn-sm btn-ghost" id="navApkBtn" download>Скачать APK</a>
         <a href="app.html" class="btn btn-sm btn-primary">Открыть чат</a>
       </nav>
       <button type="button" class="menu-toggle" id="landingMenuBtn" aria-label="Меню">
@@ -58,11 +59,11 @@
       <div class="container hero-inner">
         <div class="hero-badge">Офлайн · Без серверов · 13+</div>
         <h1 class="hero-title">Твой AI<br><span>прямо в телефоне</span></h1>
-        <p class="hero-sub">Работает офлайн. Без серверов. Бесплатно. Модель запускается локально — ваши чаты никуда не уходят.</p>
+        <p class="hero-sub">Работает офлайн. Без серверов. <b>7 дней бесплатно</b>, далее <b>290 ₽/мес</b>. Модель на устройстве — чаты никуда не уходят.</p>
         <div class="hero-actions">
-          <a href="app.html" class="btn btn-lg btn-primary">Начать бесплатно</a>
-          <button type="button" class="btn btn-lg btn-ghost" id="installBtn" style="display:none;">Установить на телефон</button>
-          <a href="#how" class="btn btn-lg btn-ghost">Как это работает</a>
+          <a href="app.html" class="btn btn-lg btn-primary">Открыть в браузере</a>
+          <a href="downloads/nyvex.apk" class="btn btn-lg btn-ghost" id="heroApkBtn" download>Скачать APK</a>
+          <button type="button" class="btn btn-lg btn-ghost" id="installBtn" style="display:none;">Установить PWA</button>
         </div>
         <p class="hero-note">Требуется современный браузер. Данные хранятся только на устройстве.</p>
       </div>
@@ -159,6 +160,29 @@
     </section>
 
     <!-- FAQ -->
+    
+    <section class="how" id="install">
+      <div class="container">
+        <h2 class="section-title">Установить приложение</h2>
+        <div class="features-grid" style="margin-bottom:24px;">
+          <article class="feature-card">
+            <h3>Android — APK</h3>
+            <p>1. Скачайте APK кнопкой ниже<br>2. Разрешите установку из неизвестных источников<br>3. Откройте файл и установите NYVEX</p>
+            <a href="downloads/nyvex.apk" class="btn btn-sm btn-primary" style="margin-top:12px;" download>Скачать APK</a>
+          </article>
+          <article class="feature-card">
+            <h3>Android — PWA</h3>
+            <p>1. Откройте сайт в Chrome<br>2. Меню → «Установить приложение»<br>3. Или кнопка «Установить PWA» выше</p>
+          </article>
+          <article class="feature-card">
+            <h3>iPhone — Safari</h3>
+            <p>1. Откройте сайт в Safari<br>2. Поделиться → «На экран „Домой“»<br>3. Готово — иконка NYVEX на домашнем экране</p>
+          </article>
+        </div>
+        <p class="hero-note" id="deviceHint" style="text-align:center;"></p>
+      </div>
+    </section>
+
     <section class="faq" id="faq">
       <div class="container">
         <h2 class="section-title">Частые вопросы</h2>
@@ -197,6 +221,7 @@
         <h2>Готовы попробовать?</h2>
         <p>Откройте чат прямо сейчас — без регистрации серверов и без подписки.</p>
         <a href="app.html" class="btn btn-lg btn-primary">Открыть NYVEX</a>
+        <a href="downloads/nyvex.apk" class="btn btn-lg btn-ghost" download style="margin-left:8px;">Скачать APK</a>
       </div>
     </section>
   </main>
@@ -246,6 +271,19 @@
       deferredPrompt = null;
       installBtn.style.display = 'none';
     });
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const hint = document.getElementById('deviceHint');
+    if (hint) {
+      if (isAndroid) hint.textContent = 'На этом устройстве удобнее скачать APK.';
+      else if (isIOS) hint.textContent = 'На iPhone установите через Safari → На экран «Домой».';
+      else hint.textContent = 'На телефоне откройте этот сайт или скачайте APK для Android.';
+    }
+    if (isIOS) {
+      document.getElementById('heroApkBtn')?.style && (document.getElementById('heroApkBtn').style.display = 'none');
+      document.getElementById('navApkBtn')?.style && (document.getElementById('navApkBtn').style.display = 'none');
+    }
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js').catch(() => {});
     }

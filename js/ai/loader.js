@@ -1,11 +1,11 @@
 /**
  * NYVEX — ai/loader.js
- * Загрузка модели через Web Worker (+ fallback main thread)
+ * Web Worker + fallback, model status, model switch
  */
-
-import { MODEL, CDN } from '../core/config.js';
+import { MODEL, CDN, MODELS, DEFAULT_MODEL_ID, STORAGE_KEYS } from '../core/config.js';
 import { isMobile, $ } from '../core/utils.js';
 import { toast } from '../core/toast.js';
+import { storage } from '../core/storage.js';
 
 let worker = null;
 let modelReady = false;
@@ -17,8 +17,22 @@ let useWorker = true;
 let mainGenerator = null;
 let pendingGenerate = new Map();
 let reqSeq = 0;
+let loadPct = 0;
+let statusListeners = [];
 
-const EST_TOTAL_BYTES = 350 * 1024 * 1024;
+function getPrefModelId() {
+  try {
+    const pref = storage.getModelPref();
+    if (pref?.id) return pref.id;
+  } catch {}
+  return DEFAULT_MODEL_ID;
+}
+
+let activeModelId = getPrefModelId();
+
+export function getActiveModelId() {
+  return activeModelId;
+}
 
 export function isModelReady() {
   return modelReady;
@@ -32,8 +46,58 @@ export function getLoadError() {
   return loadError;
 }
 
-export function isUsingWorker() {
-  return useWorker && !!worker;
+export function getLoadPct() {
+  return loadPct;
+}
+
+export function getModelStatus() {
+  if (loadError && !modelReady) return { state: 'error', label: 'Ошибка', pct: loadPct, device: modelDevice };
+  if (modelReady) return { state: 'ready', label: 'Загружена · ' + modelDevice, pct: 100, device: modelDevice };
+  if (loading) return { state: 'loading', label: 'Загрузка · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice };
+  return { state: 'idle', label: 'Не загружена', pct: 0, device: modelDevice };
+}
+
+export function onModelStatus(fn) {
+  statusListeners.push(fn);
+  try {
+    fn(getModelStatus());
+  } catch {}
+  return () => {
+    statusListeners = statusListeners.filter((x) => x !== fn);
+  };
+}
+
+function emitStatus() {
+  const st = getModelStatus();
+  statusListeners.forEach((fn) => {
+    try {
+      fn(st);
+    } catch (e) {
+      console.error(e);
+    }
+  });
+  // UI hooks
+  try {
+    const badge = $('modelBadge');
+    if (badge) {
+      badge.classList.toggle('loading', st.state === 'loading');
+      badge.classList.toggle('error', st.state === 'error');
+      if (st.state === 'ready') badge.classList.remove('loading', 'error');
+    }
+    const desc = $('modelInfoDesc');
+    if (desc) desc.textContent = st.label;
+    const miStatus = $('miStatus');
+    if (miStatus) miStatus.textContent = st.state === 'ready' ? 'Загружена' : st.state === 'error' ? 'Ошибка' : st.state === 'loading' ? 'Загрузка' : 'Не загружена';
+    const miDevice = $('miDevice');
+    if (miDevice) miDevice.textContent = modelDevice;
+    const modelName = $('modelName');
+    if (modelName) {
+      const m = MODELS.find((x) => x.id === activeModelId);
+      modelName.textContent = m?.name || 'Qwen2.5-0.5B';
+    }
+  } catch (e) {
+    console.error('emitStatus UI', e);
+  }
 }
 
 function formatBytes(n) {
@@ -64,44 +128,47 @@ function updateUI(payload) {
   const etaEl = $('loadEta');
   const mbEl = $('loadMb');
 
-  if (payload.status === 'from_cache') {
-    if (st) st.textContent = 'Загрузка из кэша ✓';
-    if (det) det.textContent = 'Модель уже на устройстве';
+  if (payload.status === 'from_cache' || payload.status === 'done') {
+    loadPct = 100;
+    if (st) st.textContent = payload.status === 'from_cache' ? 'Загрузка из кэша ✓' : 'Готово!';
+    if (det) det.textContent = 'Модель · ' + modelDevice;
     if (fill) fill.style.width = '100%';
     if (pc) pc.textContent = '100%';
-    if (mbEl) mbEl.textContent = '';
-    if (speedEl) speedEl.textContent = '';
-    if (etaEl) etaEl.textContent = '';
+    emitStatus();
     return;
   }
 
   if (payload.status === 'progress') {
-    const total = payload.total || EST_TOTAL_BYTES;
+    const total = payload.total || 350 * 1024 * 1024;
     const loaded = payload.loaded || 0;
     const pct = payload.pct != null ? payload.pct : total ? (loaded / total) * 100 : 0;
-    if (fill) fill.style.width = Math.min(99, pct) + '%';
-    if (pc) pc.textContent = Math.round(Math.min(99, pct)) + '%';
+    loadPct = Math.min(99, pct);
+    if (fill) fill.style.width = loadPct + '%';
+    if (pc) pc.textContent = Math.round(loadPct) + '%';
     if (st) st.textContent = 'Скачивание модели…';
     if (mbEl) mbEl.textContent = formatBytes(loaded) + ' / ' + formatBytes(total);
     if (speedEl) speedEl.textContent = formatSpeed(payload.speed);
     if (etaEl) etaEl.textContent = 'ETA ' + formatEta(payload.eta);
     if (det) {
       const slow = payload.speed > 0 && payload.speed < 200 * 1024;
-      det.textContent = slow
-        ? 'Медленное соединение. Рекомендуем Wi‑Fi'
-        : 'Ускорение: ' + modelDevice;
+      det.textContent = slow ? 'Медленное соединение. Рекомендуем Wi‑Fi' : 'Ускорение: ' + modelDevice;
     }
     if (warn && payload.speed > 0 && payload.speed < 100 * 1024) {
       warn.style.display = 'block';
       warn.textContent = '⚠️ Медленная сеть. Первый запуск ~350 МБ — лучше на Wi‑Fi.';
     }
+    emitStatus();
     return;
   }
 
   if (payload.status === 'ready' || payload.status === 'init') {
     if (st) st.textContent = payload.message || 'Инициализация…';
-    if (payload.pct != null && fill) fill.style.width = payload.pct + '%';
-    if (payload.pct != null && pc) pc.textContent = Math.round(payload.pct) + '%';
+    if (payload.pct != null) {
+      loadPct = payload.pct;
+      if (fill) fill.style.width = payload.pct + '%';
+      if (pc) pc.textContent = Math.round(payload.pct) + '%';
+    }
+    emitStatus();
   }
 }
 
@@ -116,18 +183,9 @@ function ensureWorker() {
       } else if (msg.type === 'loaded') {
         modelReady = true;
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
-        updateUI({ status: 'from_cache' });
-        const fill = $('loadFill');
-        const pc = $('loadPercent');
-        const st = $('loadStatus');
-        if (fill) fill.style.width = '100%';
-        if (pc) pc.textContent = '100%';
-        if (st) st.textContent = 'Готово!';
-        $('modelBadge')?.classList.remove('loading');
-        if ($('modelBadge')) $('modelBadge').textContent = 'nyvex';
-        if ($('modelInfoDesc')) $('modelInfoDesc').textContent = 'Готово · ' + modelDevice;
-        if ($('miStatus')) $('miStatus').textContent = 'Загружена';
-        if ($('miDevice')) $('miDevice').textContent = modelDevice;
+        loadPct = 100;
+        updateUI({ status: 'done' });
+        emitStatus();
       } else if (msg.type === 'result') {
         const p = pendingGenerate.get(msg.id);
         if (p) {
@@ -142,6 +200,7 @@ function ensureWorker() {
         } else {
           loadError = new Error(msg.message || 'Worker error');
           console.error('Worker error:', msg.message);
+          emitStatus();
         }
       }
     };
@@ -149,10 +208,11 @@ function ensureWorker() {
       console.error('Worker crash:', err);
       useWorker = false;
       loadError = err;
+      emitStatus();
     };
     return worker;
   } catch (e) {
-    console.warn('Worker unavailable, fallback main thread', e);
+    console.warn('Worker unavailable', e);
     useWorker = false;
     return null;
   }
@@ -161,30 +221,40 @@ function ensureWorker() {
 export function cancelLoad() {
   cancelled = true;
   if (worker) {
-    try { worker.terminate(); } catch { /* ignore */ }
+    try {
+      worker.terminate();
+    } catch {}
     worker = null;
   }
   loading = false;
   modelReady = false;
   if ($('loadStatus')) $('loadStatus').textContent = 'Загрузка отменена';
-  if ($('loadDetail')) $('loadDetail').textContent = 'Можно продолжить без LLM или обновить страницу';
   toast('Загрузка отменена');
+  emitStatus();
 }
 
-export async function loadModel() {
+export async function loadModel(modelId) {
   if (loading) return modelReady;
-  if (modelReady) return true;
+  if (modelReady && (!modelId || modelId === activeModelId)) return true;
+
+  if (modelId && modelId !== activeModelId) {
+    await unloadModel();
+    activeModelId = modelId;
+    storage.setModelPref({ id: modelId, at: Date.now() });
+  }
+
   loading = true;
   cancelled = false;
   loadError = null;
+  loadPct = 0;
+  emitStatus();
 
   const warn = $('loadWarn');
   if (warn) {
     warn.style.display = 'block';
     warn.textContent =
-      '📥 При первом запуске скачивается модель ~350 МБ. Рекомендуем Wi‑Fi. Повторный запуск — из кэша, почти мгновенно.';
+      '📥 При первом запуске скачивается модель. Рекомендуем Wi‑Fi. Повторный запуск — из кэша.';
   }
-  $('modelBadge')?.classList.add('loading');
 
   const hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
   const preferGpu = hasWebGPU && !isMobile();
@@ -205,7 +275,7 @@ export async function loadModel() {
           }
         };
         w.addEventListener('message', onMsg);
-        w.postMessage({ type: 'load', preferGpu });
+        w.postMessage({ type: 'load', preferGpu, modelId: activeModelId });
         setTimeout(() => {
           w.removeEventListener('message', onMsg);
           if (!modelReady) resolve(false);
@@ -213,9 +283,8 @@ export async function loadModel() {
       });
       loading = false;
       if (cancelled) return false;
-      if (!ok && !modelReady) {
-        return loadMainThread(preferGpu);
-      }
+      if (!ok && !modelReady) return loadMainThread(preferGpu);
+      emitStatus();
       return modelReady;
     } catch (e) {
       console.error(e);
@@ -237,7 +306,7 @@ async function loadMainThread(preferGpu) {
     let lastTs = Date.now();
     let lastLoaded = 0;
 
-    mainGenerator = await pipeline(MODEL.task, MODEL.id, {
+    mainGenerator = await pipeline(MODEL.task, activeModelId, {
       device: preferGpu ? 'webgpu' : 'wasm',
       dtype: MODEL.dtype,
       progress_callback: (p) => {
@@ -270,36 +339,48 @@ async function loadMainThread(preferGpu) {
     if (cancelled) {
       mainGenerator = null;
       loading = false;
+      emitStatus();
       return false;
     }
 
     modelReady = true;
     useWorker = false;
-    updateUI({ status: 'from_cache' });
-    $('modelBadge')?.classList.remove('loading');
-    if ($('modelBadge')) $('modelBadge').textContent = 'nyvex';
+    loadPct = 100;
+    updateUI({ status: 'done' });
     loading = false;
+    emitStatus();
     return true;
   } catch (e) {
     console.error('Main-thread model load error:', e);
     loadError = e;
-    const warn = $('loadWarn');
-    if (warn) {
-      warn.style.display = 'block';
-      warn.textContent =
+    loading = false;
+    if ($('loadWarn')) {
+      $('loadWarn').style.display = 'block';
+      $('loadWarn').textContent =
         '⚠️ Не удалось загрузить LLM: ' + (e?.message || 'ошибка') + '. Интерфейс доступен.';
     }
     if ($('loadStatus')) $('loadStatus').textContent = 'LLM недоступна';
-    loading = false;
+    emitStatus();
     return false;
   }
 }
 
+export async function unloadModel() {
+  modelReady = false;
+  mainGenerator = null;
+  if (worker) {
+    try {
+      worker.terminate();
+    } catch {}
+    worker = null;
+  }
+  pendingGenerate.clear();
+  emitStatus();
+}
+
 export function generateViaWorker(messages, options = {}) {
   if (!modelReady) {
-    return Promise.resolve(
-      'Модель ещё не загружена. Подождите завершения загрузки или обновите страницу при стабильном интернете.'
-    );
+    return Promise.resolve('Модель ещё не загружена. Подождите или обновите страницу.');
   }
 
   if (useWorker && worker) {
@@ -349,10 +430,5 @@ export function generateViaWorker(messages, options = {}) {
 }
 
 export function terminateWorker() {
-  if (worker) {
-    try { worker.terminate(); } catch { /* ignore */ }
-    worker = null;
-  }
-  pendingGenerate.clear();
-  modelReady = false;
+  unloadModel();
 }

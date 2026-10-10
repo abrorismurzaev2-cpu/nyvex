@@ -1,13 +1,10 @@
 /**
  * NYVEX — chat/messages.js
- * Рендер сообщений и welcome
  */
-
 import { $, escapeHtml, renderMarkdown, scrollBottom } from '../core/utils.js';
 import { getDisplayName, getAvatar } from '../auth/profile.js';
 import { isModelReady } from '../ai/loader.js';
-
-const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/><path d="M12 3 L12 21"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>`;
+import { LOGO_SVG } from '../core/config.js';
 
 export function renderWelcome() {
   const inner = $('chatInner');
@@ -19,7 +16,7 @@ export function renderWelcome() {
       <div class="welcome-logo">${LOGO_SVG}</div>
       <div class="welcome-brand">NYVEX</div>
       <div class="welcome-title">Привет, ${escapeHtml(name)}! <span>Чем помочь?</span></div>
-      <div class="welcome-sub">Локальный AI-чат. Ответы генерируются на устройстве — без серверов.</div>
+      <div class="welcome-sub">Локальный AI-чат. Ответы на устройстве — без серверов. 7 дней бесплатно.</div>
       <div class="welcome-status ${ready ? '' : 'loading'}">
         <span class="st-dot"></span>
         <span>${ready ? 'Модель готова' : 'Модель загружается…'}</span>
@@ -27,7 +24,13 @@ export function renderWelcome() {
     </div>`;
 }
 
-export function appendMessage(role, text, animate = true) {
+/**
+ * @param {string} role
+ * @param {string} text
+ * @param {boolean} animate
+ * @param {{thinking?: string|null, thinkingMs?: number}|null} meta
+ */
+export function appendMessage(role, text, animate = true, meta = null) {
   const inner = $('chatInner');
   if (!inner) return null;
 
@@ -55,10 +58,28 @@ export function appendMessage(role, text, animate = true) {
       ? `NYVEX <span class="tag">nyvex</span>`
       : escapeHtml(userName);
 
+  let thinkingHtml = '';
+  if (role === 'ai' && meta?.thinking) {
+    const sec = meta.thinkingMs != null ? (meta.thinkingMs / 1000).toFixed(1) : '';
+    thinkingHtml = `
+      <div class="think-block collapsed">
+        <button type="button" class="think-head" data-think-toggle>
+          <div class="think-icn">${LOGO_SVG}</div>
+          <span class="think-label">Размышления</span>
+          <span class="think-time">${sec ? 'Думал ' + sec + ' сек' : ''}</span>
+          <span class="think-caret">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+          </span>
+        </button>
+        <div class="think-body">${escapeHtml(meta.thinking)}</div>
+      </div>`;
+  }
+
   msg.innerHTML = `
     <div class="msg-av">${avatar}</div>
     <div class="msg-body">
       <div class="msg-name">${name}</div>
+      ${thinkingHtml}
       <div class="msg-text" data-text></div>
       ${
         role === 'ai'
@@ -84,6 +105,11 @@ export function appendMessage(role, text, animate = true) {
     textEl.innerHTML = renderMarkdown(text || '');
     if (!text) textEl.style.display = 'none';
   }
+
+  msg.querySelector('[data-think-toggle]')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    msg.querySelector('.think-block')?.classList.toggle('collapsed');
+  });
 
   inner.appendChild(msg);
   if (animate) scrollBottom($('chatScroll'));

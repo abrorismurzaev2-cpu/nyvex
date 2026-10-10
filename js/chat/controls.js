@@ -1,19 +1,24 @@
 /**
  * NYVEX — chat/controls.js
- * Копирование, лайк/дизлайк, composer
  */
-
 import { $, isMobile } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { getCurrentChat, addMessageToCurrent } from './history.js';
 import { appendMessage, showTyping, removeTyping } from './messages.js';
 import { generateReply } from '../ai/chat.js';
+import {
+  canSendMessages,
+  showTrialModal,
+  checkTrialWarnings,
+} from '../core/trial.js';
 
 let isGenerating = false;
+let deepThinking = false;
 
 export function initControls() {
   const composerInput = $('composerInput');
   const sendBtn = $('sendBtn');
+  const thinkToggle = $('thinkToggle');
 
   composerInput?.addEventListener('input', () => {
     autoResize();
@@ -23,11 +28,19 @@ export function initControls() {
   composerInput?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey && !isMobile()) {
       e.preventDefault();
-      if (sendBtn?.classList.contains('enabled')) sendMessage();
+      if (sendBtn?.classList.contains('enabled') && !isGenerating) sendMessage();
     }
   });
 
-  sendBtn?.addEventListener('click', sendMessage);
+  sendBtn?.addEventListener('click', () => {
+    if (!isGenerating) sendMessage();
+  });
+
+  thinkToggle?.addEventListener('click', () => {
+    deepThinking = !deepThinking;
+    thinkToggle.classList.toggle('on', deepThinking);
+    toast(deepThinking ? 'Deep Thinking включён' : 'Deep Thinking выключен');
+  });
 
   $('chatInner')?.addEventListener('click', onMsgAction);
 }
@@ -43,11 +56,22 @@ function updateSendBtn() {
   const sendBtn = $('sendBtn');
   const composerInput = $('composerInput');
   if (!sendBtn || !composerInput) return;
-  sendBtn.classList.toggle('enabled', composerInput.value.trim().length > 0);
+  const ok = composerInput.value.trim().length > 0 && !isGenerating;
+  sendBtn.classList.toggle('enabled', ok);
+  sendBtn.disabled = isGenerating;
 }
 
 async function sendMessage() {
   if (isGenerating) return;
+
+  if (!canSendMessages()) {
+    showTrialModal('expired');
+    toast('Пробный период закончился');
+    return;
+  }
+
+  checkTrialWarnings();
+
   const input = $('composerInput');
   const text = input?.value?.trim();
   if (!text) return;
@@ -60,25 +84,30 @@ async function sendMessage() {
   if (input) {
     input.value = '';
     autoResize();
-    updateSendBtn();
   }
 
   isGenerating = true;
+  updateSendBtn();
   showTyping();
 
   try {
     const history = (chat.messages || []).slice(0, -1);
-    const reply = await generateReply(text, history);
+    const result = await generateReply(text, history, { deepThinking });
     removeTyping();
-    addMessageToCurrent('ai', reply);
-    appendMessage('ai', reply);
+    const answer = typeof result === 'string' ? result : result.answer;
+    const thinking = typeof result === 'object' ? result.thinking : null;
+    const ms = typeof result === 'object' ? result.ms : 0;
+    addMessageToCurrent('ai', answer, { thinking, thinkingMs: ms });
+    appendMessage('ai', answer, true, { thinking, thinkingMs: ms });
   } catch (e) {
+    console.error('sendMessage', e);
     removeTyping();
-    const err = 'Ошибка: ' + String(e?.message || '').slice(0, 100);
+    const err = 'Не удалось получить ответ. Попробуйте ещё раз.';
     addMessageToCurrent('ai', err);
     appendMessage('ai', err);
   } finally {
     isGenerating = false;
+    updateSendBtn();
   }
 }
 
@@ -100,26 +129,24 @@ function onMsgAction(e) {
         })
         .catch(() => toast('Ошибка копирования'));
     } else {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      document.body.appendChild(ta);
-      ta.select();
       try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
         document.execCommand('copy');
+        ta.remove();
         toast('Скопировано');
       } catch {
         toast('Ошибка');
       }
-      ta.remove();
     }
   } else if (act === 'like') {
-    const d = msg.querySelector('[data-act="dislike"]');
-    d?.classList.remove('active');
+    msg.querySelector('[data-act="dislike"]')?.classList.remove('active');
     btn.classList.toggle('active');
     toast(btn.classList.contains('active') ? 'Спасибо!' : 'Снято');
   } else if (act === 'dislike') {
-    const l = msg.querySelector('[data-act="like"]');
-    l?.classList.remove('active');
+    msg.querySelector('[data-act="like"]')?.classList.remove('active');
     btn.classList.toggle('active');
     toast(btn.classList.contains('active') ? 'Учтём!' : 'Снято');
   }

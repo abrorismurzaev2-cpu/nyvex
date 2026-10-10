@@ -9,7 +9,7 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 
 let generator = null;
 let device = 'wasm';
@@ -26,6 +26,7 @@ self.onmessage = async (e) => {
   try {
     if (type === 'load') {
       const preferGpu = !!data.preferGpu;
+      if (data.modelId) MODEL_ID = data.modelId;
       device = preferGpu ? 'webgpu' : 'wasm';
       post({ type: 'progress', status: 'init', message: 'Инициализация…' });
 

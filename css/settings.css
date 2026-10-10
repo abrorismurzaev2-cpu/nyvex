@@ -263,3 +263,38 @@
   flex: 1;
   min-width: 140px;
 }
+
+.setting-section-title {
+  font-size: 11px; font-weight: 700; color: var(--dim-2);
+  text-transform: uppercase; letter-spacing: .8px;
+  padding: 16px 16px 8px;
+}
+.sub-block {
+  margin: 0 8px 12px; padding: 14px 16px; border-radius: 14px;
+  background: linear-gradient(135deg, rgba(255,179,64,0.1), rgba(124,92,255,0.06));
+  border: 1px solid rgba(255,179,64,0.25);
+}
+.sub-status { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+.sub-progress {
+  height: 6px; border-radius: 4px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 8px;
+}
+.sub-progress-fill {
+  height: 100%; width: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 4px; transition: width .4s ease;
+}
+.sub-end { font-size: 12px; color: var(--dim-2); margin-bottom: 12px; }
+.sub-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.model-list { padding: 0 8px 12px; display: flex; flex-direction: column; gap: 8px; }
+.model-card {
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--bg-3); border: 1px solid var(--line);
+}
+.model-card.active { border-color: rgba(124,92,255,0.45); background: rgba(124,92,255,0.08); }
+.model-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.model-card-top .tag {
+  font-size: 10px; padding: 2px 7px; border-radius: 100px;
+  background: rgba(124,92,255,0.2); color: #b8a3ff;
+}
+.model-card-meta { font-size: 12px; color: var(--dim); margin-bottom: 4px; }
+.model-card-stars { font-size: 11px; color: var(--dim-2); margin-bottom: 10px; }
