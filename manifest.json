@@ -1,9 +1,9 @@
 {
-  "name": "NYVEX",
+  "name": "NYVEX — AI Chat",
   "short_name": "NYVEX",
   "description": "Локальный AI-чат прямо в телефоне. Офлайн, без серверов.",
-  "start_url": "/app.html",
-  "scope": "/",
+  "start_url": "./app.html",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
   "background_color": "#0e0e11",
@@ -11,25 +11,25 @@
   "lang": "ru",
   "icons": [
     {
-      "src": "/assets/icons/icon-192.png",
+      "src": "assets/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icons/icon-512.png",
+      "src": "assets/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/icons/icon-maskable-512.png",
+      "src": "assets/icons/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
-      "src": "/assets/icons/apple-touch-icon.png",
+      "src": "assets/icons/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"

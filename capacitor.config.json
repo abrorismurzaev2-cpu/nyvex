@@ -1,11 +1,21 @@
 {
-  "appId": "com.nyvex.app",
+  "appId": "app.nyvex.chat",
   "appName": "NYVEX",
-  "webDir": ".",
+  "webDir": "www",
+  "bundledWebRuntime": false,
   "server": {
     "androidScheme": "https"
   },
   "android": {
-    "allowMixedContent": true
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false,
+    "backgroundColor": "#0e0e11"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0e0e11",
+      "showSpinner": false
+    }
   }
 }

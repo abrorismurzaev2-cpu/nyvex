@@ -16,8 +16,8 @@ function renderBanner() {
       <p>
         Мы используем только технические данные (localStorage) для работы чата и сохранения настроек.
         Аналитики и рекламы нет.
-        <a href="/legal/cookies.html">Политика Cookie</a> ·
-        <a href="/legal/privacy.html">Конфиденциальность</a>
+        <a href="legal/cookies.html">Политика Cookie</a> ·
+        <a href="legal/privacy.html">Конфиденциальность</a>
       </p>
       <div class="cookie-actions">
         <button type="button" class="btn btn-primary" id="cookieAcceptAll">Принять все</button>

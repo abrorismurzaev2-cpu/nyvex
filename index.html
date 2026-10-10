@@ -11,18 +11,18 @@
   <title>NYVEX — AI прямо в телефоне</title>
 
   <!-- PWA -->
-  <link rel="manifest" href="/manifest.json">
-  <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
-  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="assets/icons/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 
   <!-- Fonts (local for offline) — fallback to system until we ship Manrope files -->
-  <link rel="preload" href="/css/base.css" as="style">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/css/components.css">
-  <link rel="stylesheet" href="/css/landing.css">
-  <link rel="stylesheet" href="/css/animations.css">
-  <link rel="stylesheet" href="/css/legal.css">
+  <link rel="preload" href="css/base.css" as="style">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/landing.css">
+  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/legal.css">
 </head>
 <body>
   <!-- Cookie banner injected by js/ui/cookie-banner.js -->
@@ -30,7 +30,7 @@
 
   <header class="landing-header">
     <div class="container landing-header-inner">
-      <a href="/" class="brand" aria-label="NYVEX">
+      <a href="index.html" class="brand" aria-label="NYVEX">
         <span class="brand-logo" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
             <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
@@ -44,7 +44,7 @@
         <a href="#features">Возможности</a>
         <a href="#how">Как работает</a>
         <a href="#faq">FAQ</a>
-        <a href="/app.html" class="btn btn-sm btn-primary">Открыть чат</a>
+        <a href="app.html" class="btn btn-sm btn-primary">Открыть чат</a>
       </nav>
       <button type="button" class="menu-toggle" id="landingMenuBtn" aria-label="Меню">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
@@ -60,7 +60,7 @@
         <h1 class="hero-title">Твой AI<br><span>прямо в телефоне</span></h1>
         <p class="hero-sub">Работает офлайн. Без серверов. Бесплатно. Модель запускается локально — ваши чаты никуда не уходят.</p>
         <div class="hero-actions">
-          <a href="/app.html" class="btn btn-lg btn-primary">Начать бесплатно</a>
+          <a href="app.html" class="btn btn-lg btn-primary">Начать бесплатно</a>
           <button type="button" class="btn btn-lg btn-ghost" id="installBtn" style="display:none;">Установить на телефон</button>
           <a href="#how" class="btn btn-lg btn-ghost">Как это работает</a>
         </div>
@@ -196,7 +196,7 @@
       <div class="container cta-inner">
         <h2>Готовы попробовать?</h2>
         <p>Откройте чат прямо сейчас — без регистрации серверов и без подписки.</p>
-        <a href="/app.html" class="btn btn-lg btn-primary">Открыть NYVEX</a>
+        <a href="app.html" class="btn btn-lg btn-primary">Открыть NYVEX</a>
       </div>
     </section>
   </main>
@@ -208,15 +208,15 @@
         <p>Локальный AI для телефона. © 2026</p>
       </div>
       <div class="footer-links">
-        <a href="/legal/privacy.html">Конфиденциальность</a>
-        <a href="/legal/terms.html">Условия</a>
-        <a href="/legal/cookies.html">Cookie</a>
-        <a href="/legal/data.html">Обработка данных</a>
+        <a href="legal/privacy.html">Конфиденциальность</a>
+        <a href="legal/terms.html">Условия</a>
+        <a href="legal/cookies.html">Cookie</a>
+        <a href="legal/data.html">Обработка данных</a>
       </div>
     </div>
   </footer>
 
-  <script type="module" src="/js/ui/cookie-banner.js"></script>
+  <script type="module" src="js/ui/cookie-banner.js"></script>
   <script type="module">
     // Lightweight landing interactions only
     const menuBtn = document.getElementById('landingMenuBtn');
@@ -247,7 +247,7 @@
       installBtn.style.display = 'none';
     });
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+      navigator.serviceWorker.register('./service-worker.js').catch(() => {});
     }
   </script>
 </body>

@@ -49,7 +49,7 @@ async function boot() {
   document.addEventListener('gesturestart', (e) => e.preventDefault());
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js').catch(() => {});
+    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 
   showScreen('loading');
