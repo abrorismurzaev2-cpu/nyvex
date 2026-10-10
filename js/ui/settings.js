@@ -165,10 +165,8 @@ export function initSettings() {
 
   // About → show landing
   $('aboutAppBtn')?.addEventListener('click', () => {
-    try {
-      localStorage.removeItem('nyvex_landing_seen');
-    } catch {}
-    location.href = './index.html';
+    // Отдельный лендинг-сайт
+    window.open('https://abrorismurzaev2-cpu.github.io/nyvex-landing/', '_blank');
   });
 }
 
