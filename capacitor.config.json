@@ -1,0 +1,11 @@
+{
+  "appId": "com.nyvex.app",
+  "appName": "NYVEX",
+  "webDir": ".",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}

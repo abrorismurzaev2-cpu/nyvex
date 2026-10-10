@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0e0e11">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>NYVEX — Чат</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="/assets/icons/favicon-32.png">
+  <link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+  <link rel="apple-touch-startup-image" href="/assets/icons/icon-512.png">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/components.css">
+  <link rel="stylesheet" href="/css/animations.css">
+  <link rel="stylesheet" href="/css/auth.css">
+  <link rel="stylesheet" href="/css/chat.css">
+  <link rel="stylesheet" href="/css/settings.css">
+</head>
+<body>
+  <!-- LOADING -->
+  <div class="screen active" id="screen-loading">
+    <div class="loader-box">
+      <div class="loader-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
+          <path d="M12 3 L12 21"/>
+          <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="loader-title">NYVEX</div>
+      <div class="loader-sub">Локальный AI-чат</div>
+      <div class="loader-bar"><div class="loader-fill" id="loadFill"></div></div>
+      <div class="loader-info">
+        <span id="loadStatus">Подготовка…</span>
+        <span id="loadPercent">0%</span>
+      </div>
+      <div class="loader-meta" style="display:flex;flex-wrap:wrap;gap:8px 14px;justify-content:center;margin-top:10px;font-size:12px;color:var(--dim-2);font-variant-numeric:tabular-nums;">
+        <span id="loadMb"></span>
+        <span id="loadSpeed"></span>
+        <span id="loadEta"></span>
+      </div>
+      <div class="loader-status" id="loadDetail">Проверка окружения…</div>
+      <div class="loader-warn" id="loadWarn"></div>
+      <button type="button" class="btn btn-ghost" id="cancelLoadBtn" style="margin-top:16px;min-height:44px;">Отмена загрузки</button>
+    </div>
+  </div>
+
+  <!-- AUTH -->
+  <div class="screen" id="screen-auth">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
+          <path d="M12 3 L12 21"/>
+          <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <div class="auth-title" id="authTitle">Добро пожаловать в <span>NYVEX</span></div>
+      <div class="auth-sub" id="authSub">Загрузите фото и укажите имя — они будут в чате.</div>
+
+      <input type="file" id="avatarInput" accept="image/*" style="display:none">
+
+      <div class="avatar-picker" data-reg>
+        <div class="avatar-circle" id="avatarCircle">
+          <div class="av-placeholder" id="avPlaceholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>ФОТО</span>
+          </div>
+          <img id="avatarPreview" style="display:none" alt="">
+          <div class="avatar-overlay">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+        </div>
+        <div class="avatar-label">Нажмите, чтобы <b>загрузить фото</b></div>
+      </div>
+
+      <div class="field" id="f-name" data-reg>
+        <input type="text" id="name" placeholder="Ваше имя" autocomplete="name" maxlength="30" />
+        <div class="err">Введите имя (мин. 2 символа)</div>
+      </div>
+
+      <div class="field" id="f-email">
+        <input type="email" id="email" placeholder="Email" autocomplete="email" inputmode="email" />
+        <div class="err">Введите корректный email</div>
+      </div>
+      <div class="field" id="f-pass" data-reg>
+        <input type="password" id="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password" />
+        <div class="err">Минимум 6 символов</div>
+      </div>
+
+      <div class="auth-legal" data-reg>
+        <label class="checkbox-row">
+          <input type="checkbox" id="agreeTerms" />
+          <span>Я согласен с <a href="/legal/terms.html" target="_blank" rel="noopener">Условиями</a> и <a href="/legal/privacy.html" target="_blank" rel="noopener">Политикой конфиденциальности</a></span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="agreeAge" />
+          <span>Мне 13 лет или больше</span>
+        </label>
+      </div>
+
+      <button type="button" class="auth-btn" id="authBtn">
+        <span class="spinner"></span>
+        <span id="authBtnText">Создать аккаунт</span>
+      </button>
+
+      <div class="auth-switch">
+        <span id="switchText">Уже есть аккаунт?</span>
+        <a id="switchBtn" role="button" tabindex="0">Войти</a>
+      </div>
+
+      <div class="trust">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2 L20 7 V12 c0 5-4 8-8 9-4-1-8-4-8-9 V7 Z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+        Данные хранятся только у вас
+      </div>
+    </div>
+  </div>
+
+  <!-- APP -->
+  <div class="screen" id="screen-app">
+    <div class="sb-overlay" id="sbOverlay"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <div class="sb-logo" id="homeLogo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
+            <path d="M12 3 L12 21"/>
+            <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
+        <div class="sb-name">NYVEX</div>
+        <button type="button" class="sb-close" id="sbClose" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <button type="button" class="new-chat" id="newChatBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5v14M5 12h14"/>
+        </svg>
+        Новый чат
+      </button>
+
+      <div class="sb-section">История</div>
+      <div class="sb-list" id="sbList"></div>
+
+      <div class="sb-user" id="userBtn">
+        <div class="user-av" id="userAv">?</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Гость</div>
+          <div class="user-plan" id="userPlan"><span class="pro-dot"></span> Pro</div>
+        </div>
+        <svg class="user-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="6" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18" r="1"/></svg>
+      </div>
+    </aside>
+
+    <main class="chat-main">
+      <header class="chat-top">
+        <div class="chat-top-left">
+          <button type="button" class="menu-btn" id="menuBtn" aria-label="Меню">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+          </button>
+          <div class="chat-title" id="chatTitle">Новый чат</div>
+          <div class="model-badge" id="modelBadge">nyvex</div>
+        </div>
+        <div class="chat-top-right">
+          <button type="button" class="icon-btn" id="settingsBtn" title="Настройки" aria-label="Настройки">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="chat-scroll" id="chatScroll">
+        <div class="chat-inner" id="chatInner"></div>
+      </div>
+
+      <div class="composer-wrap">
+        <div class="composer">
+          <textarea id="composerInput" placeholder="Напишите сообщение…" rows="1"></textarea>
+          <button type="button" class="send-btn" id="sendBtn" title="Отправить" aria-label="Отправить">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+        <div class="composer-hint">NYVEX · ответы локально на устройстве</div>
+      </div>
+    </main>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <div class="ctx-menu" id="ctxMenu">
+    <div class="ctx-item" data-act="rename">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+      Переименовать
+    </div>
+    <div class="ctx-item" data-act="duplicate">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+      </svg>
+      Дублировать
+    </div>
+    <div class="ctx-item danger" data-act="delete">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+      </svg>
+      Удалить
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-window">
+      <div class="settings-head">
+        <h3>Настройки</h3>
+        <button type="button" class="icon-btn" id="settingsClose" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div class="profile-block" id="profileBlock">
+          <div class="profile-av-wrap">
+            <div class="profile-av" id="profileAv">?</div>
+            <div class="profile-av-edit">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </div>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name" id="profileName">Гость</div>
+            <div class="profile-email" id="profileEmail">guest@nyvex</div>
+            <div class="profile-plan">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l2.5 5 5.5.8-4 3.9.9 5.5L12 14.7l-4.9 2.5.9-5.5-4-3.9 5.5-.8z"/>
+              </svg>
+              NYVEX Pro
+            </div>
+          </div>
+        </div>
+
+        <div class="setting-item" id="modelInfoBtn">
+          <div class="setting-item-info">
+            <div class="setting-item-title">Модель: <span id="modelName">Qwen2.5-0.5B</span></div>
+            <div class="setting-item-desc" id="modelInfoDesc">Загрузка…</div>
+          </div>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--dim);flex-shrink:0">
+            <path d="M9 6l6 6-6 6"/>
+          </svg>
+        </div>
+        <div class="setting-item" data-setting="history">
+          <div class="setting-item-info">
+            <div class="setting-item-title">Сохранять историю</div>
+            <div class="setting-item-desc">Хранить чаты на этом устройстве</div>
+          </div>
+          <div class="switch on" data-switch></div>
+        </div>
+        <div class="setting-item" data-setting="animations">
+          <div class="setting-item-info">
+            <div class="setting-item-title">Анимации</div>
+            <div class="setting-item-desc">Плавные переходы интерфейса</div>
+          </div>
+          <div class="switch on" data-switch></div>
+        </div>
+        <div class="setting-item" id="clearHistoryBtn">
+          <div class="setting-item-info">
+            <div class="setting-item-title">Очистить историю</div>
+            <div class="setting-item-desc">Удалить все чаты с устройства</div>
+          </div>
+        </div>
+        <div class="setting-item danger" id="logoutBtn">
+          <div class="setting-item-info">
+            <div class="setting-item-title">Выйти из аккаунта</div>
+            <div class="setting-item-desc">Данные останутся на устройстве</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODEL INFO MODAL -->
+  <div class="settings-panel" id="modelModal">
+    <div class="settings-window" style="max-width:420px;">
+      <div class="settings-head">
+        <h3>Информация о модели</h3>
+        <button type="button" class="icon-btn" id="modelModalClose" aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="settings-body">
+        <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; font-size:13px;">
+          <span style="color:var(--dim);">LLM</span>
+          <span style="color:#fff; font-weight:600;">Qwen2.5-0.5B-Instruct</span>
+        </div>
+        <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; font-size:13px;">
+          <span style="color:var(--dim);">Устройство</span>
+          <span style="color:#fff; font-weight:600;" id="miDevice">—</span>
+        </div>
+        <div style="padding:12px 14px; display:flex; justify-content:space-between; font-size:13px;">
+          <span style="color:var(--dim);">Статус</span>
+          <span style="color:#fff; font-weight:600;" id="miStatus">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Готово</div>
+
+  <script type="module" src="/js/main.js"></script>
+</body>
+</html>

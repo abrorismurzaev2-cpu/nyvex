@@ -1,0 +1,126 @@
+/* ============================================
+   NYVEX — legal.css
+   ============================================ */
+
+.legal-page {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.legal-header {
+  padding: calc(12px + var(--safe-top)) 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-2);
+}
+
+.legal-header .container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.legal-main {
+  flex: 1;
+  padding: 32px 16px 48px;
+  max-width: 720px;
+}
+
+.legal-main h1 {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.4px;
+  margin-bottom: 8px;
+}
+
+.legal-updated {
+  font-size: 13px;
+  color: var(--dim-2);
+  margin-bottom: 28px;
+}
+
+.legal-main section {
+  margin-bottom: 28px;
+}
+
+.legal-main h2 {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: #fff;
+}
+
+.legal-main p,
+.legal-main li {
+  font-size: 14.5px;
+  color: var(--dim);
+  line-height: 1.65;
+  margin-bottom: 8px;
+}
+
+.legal-main ul {
+  padding-left: 18px;
+  list-style: disc;
+}
+
+.legal-main ul li {
+  margin-bottom: 6px;
+}
+
+.legal-main a {
+  color: var(--accent-2);
+}
+
+.legal-table-wrap {
+  overflow-x: auto;
+  margin: 12px 0;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.legal-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.legal-table th,
+.legal-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.legal-table th {
+  background: var(--bg-3);
+  color: var(--txt);
+  font-weight: 600;
+}
+
+.legal-table td {
+  color: var(--dim);
+}
+
+.legal-table tr:last-child td {
+  border-bottom: none;
+}
+
+.legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  padding: 20px 16px calc(24px + var(--safe-bottom));
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.legal-footer a {
+  color: var(--dim);
+}
+
+.legal-footer a:hover {
+  color: var(--accent-2);
+}
