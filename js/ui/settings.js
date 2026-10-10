@@ -8,14 +8,15 @@ import { clearAllHistory } from '../chat/history.js';
 import { logout } from '../auth/register.js';
 import {
   getModelDevice,
-  isModelReady,
-  getLoadError,
   getModelStatus,
   onModelStatus,
   loadModel,
+  unloadModel,
   getActiveModelId,
+  cancelLoad,
+  isModelReady,
 } from '../ai/loader.js';
-import { MODELS, PRICE_RUB } from '../core/config.js';
+import { MODELS, PRICE_RUB, STORAGE_KEYS } from '../core/config.js';
 import {
   getTrialInfo,
   formatRemaining,
@@ -24,6 +25,37 @@ import {
   showTrialModal,
   hideTrialModal,
 } from '../core/trial.js';
+
+const DL_KEY = 'nyvex_downloaded_models';
+
+function getDownloaded() {
+  try {
+    return JSON.parse(localStorage.getItem(DL_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function markDownloaded(id, sizeMB) {
+  const d = getDownloaded();
+  d[id] = { downloadedAt: Date.now(), sizeMB };
+  try {
+    localStorage.setItem(DL_KEY, JSON.stringify(d));
+  } catch (e) {
+    console.error(e);
+  }
+}
+
+function unmarkDownloaded(id) {
+  const d = getDownloaded();
+  delete d[id];
+  try {
+    localStorage.setItem(DL_KEY, JSON.stringify(d));
+  } catch {}
+}
+
+/** Per-model download progress UI state */
+const progressState = {};
 
 export function initSettings() {
   const panel = $('settingsPanel');
@@ -53,8 +85,7 @@ export function initSettings() {
       if (key === 'history') settings.history = sw.classList.contains('on');
       if (key === 'animations') settings.animations = sw.classList.contains('on');
       storage.setSettings(settings);
-      const title = item?.querySelector('.setting-item-title')?.textContent || '';
-      toast(title + ' · ' + (sw.classList.contains('on') ? 'вкл' : 'выкл'));
+      toast((item?.querySelector('.setting-item-title')?.textContent || '') + ' · ' + (sw.classList.contains('on') ? 'вкл' : 'выкл'));
     });
   });
 
@@ -90,9 +121,19 @@ export function initSettings() {
     if (e.target === modelModal) modelModal.classList.remove('show');
   });
 
-  // live status
   onModelStatus((st) => {
     if ($('modelInfoDesc')) $('modelInfoDesc').textContent = st.label;
+    // refresh active card progress if matching
+    const active = getActiveModelId();
+    if (progressState[active] || st.state === 'loading') {
+      progressState[active] = {
+        ...(progressState[active] || {}),
+        percent: st.pct,
+        status: st.label,
+        loading: st.state === 'loading',
+      };
+      updateCardProgress(active);
+    }
   });
 
   $('subscribeBtn')?.addEventListener('click', () => {
@@ -107,9 +148,7 @@ export function initSettings() {
 
   $('trialModalClose')?.addEventListener('click', hideTrialModal);
   $('trialModalLater')?.addEventListener('click', hideTrialModal);
-  $('trialModalPay')?.addEventListener('click', () => {
-    activatePro();
-  });
+  $('trialModalPay')?.addEventListener('click', () => activatePro());
   $('trialModal')?.addEventListener('click', (e) => {
     if (e.target === $('trialModal')) hideTrialModal();
   });
@@ -123,10 +162,37 @@ export function initSettings() {
     toast('Осталось: ' + formatRemaining(info.remainingMs));
     if (info.expired) showTrialModal('expired');
   });
+
+  // About → show landing
+  $('aboutAppBtn')?.addEventListener('click', () => {
+    try {
+      localStorage.removeItem('nyvex_landing_seen');
+    } catch {}
+    location.href = './index.html';
+  });
 }
 
-function stars(n) {
-  return '★'.repeat(n) + '☆'.repeat(Math.max(0, 5 - n));
+function updateCardProgress(modelId) {
+  const card = document.querySelector(`[data-model="${CSS.escape(modelId)}"]`);
+  if (!card) return;
+  const st = progressState[modelId] || {};
+  const bar = card.querySelector('.model-progress-fill');
+  const meta = card.querySelector('.model-progress-meta');
+  const wrap = card.querySelector('.model-progress');
+  if (st.loading || (st.percent > 0 && st.percent < 100)) {
+    if (wrap) wrap.style.display = 'block';
+    if (bar) bar.style.width = Math.min(99, st.percent || 0) + '%';
+    if (meta) {
+      const pct = Math.round(st.percent || 0);
+      const parts = [`${pct}%`];
+      if (st.loaded && st.total) parts.push(`${st.loaded} / ${st.total} МБ`);
+      if (st.speed) parts.push(st.speed);
+      if (st.eta) parts.push(st.eta);
+      meta.textContent = parts.join(' · ');
+    }
+  } else if (st.percent >= 100) {
+    if (wrap) wrap.style.display = 'none';
+  }
 }
 
 export function renderModelList() {
@@ -134,19 +200,39 @@ export function renderModelList() {
   if (!box) return;
   const active = getActiveModelId();
   const st = getModelStatus();
+  const downloaded = getDownloaded();
+  // mark active as downloaded when ready
+  if (isModelReady() && active) markDownloaded(active, MODELS.find((m) => m.id === active)?.sizeMB);
+
   box.innerHTML = MODELS.map((m) => {
     const isActive = m.id === active;
+    const isDl = !!downloaded[m.id] || (isActive && st.state === 'ready');
+    const loading = isActive && st.state === 'loading';
+    const ps = progressState[m.id] || {};
+    const showProg = loading || (ps.loading && ps.percent < 100);
+
     return `<div class="model-card ${isActive ? 'active' : ''}" data-model="${m.id}">
       <div class="model-card-top">
         <strong>${m.name}</strong>
-        ${isActive ? '<span class="tag">активна</span>' : ''}
+        ${isActive && st.state === 'ready' ? '<span class="tag">Активна</span>' : ''}
+        ${loading ? '<span class="tag">Загрузка…</span>' : ''}
       </div>
-      <div class="model-card-meta">${m.sizeMB} МБ · ${m.desc}</div>
-      <div class="model-card-stars">Качество ${stars(m.quality)} · Скорость ${stars(m.speed)}</div>
+      <div class="model-card-meta">${m.desc || ''}</div>
+      <div class="model-card-stars">${m.size || m.sizeMB + ' МБ'} · ${m.qualityStars || ''} · ${m.speedIcons || ''} · RAM ${m.ram || '—'}</div>
+      <div class="model-progress" style="display:${showProg ? 'block' : 'none'};margin:10px 0;">
+        <div class="sub-progress"><div class="model-progress-fill sub-progress-fill" style="width:${ps.percent || st.pct || 0}%"></div></div>
+        <div class="model-progress-meta" style="font-size:11px;color:var(--dim-2);margin-top:6px;">${Math.round(ps.percent || st.pct || 0)}%</div>
+      </div>
       <div class="model-card-actions">
-        <button type="button" class="btn btn-sm btn-primary" data-select-model="${m.id}">
-          ${isActive && st.state === 'ready' ? 'Выбрана' : isActive && st.state === 'loading' ? 'Загрузка…' : 'Выбрать'}
-        </button>
+        ${
+          isActive && st.state === 'ready'
+            ? `<button type="button" class="btn btn-sm btn-ghost" data-forget-model="${m.id}">Сбросить статус</button>`
+            : isActive && loading
+              ? `<button type="button" class="btn btn-sm btn-ghost" data-cancel-model="${m.id}">Отменить</button>`
+              : isDl
+                ? `<button type="button" class="btn btn-sm btn-primary" data-select-model="${m.id}">Активировать</button>`
+                : `<button type="button" class="btn btn-sm btn-primary" data-select-model="${m.id}">Скачать</button>`
+        }
       </div>
     </div>`;
   }).join('');
@@ -155,16 +241,46 @@ export function renderModelList() {
     btn.addEventListener('click', async () => {
       const id = btn.dataset.selectModel;
       if (!id) return;
+      const m = MODELS.find((x) => x.id === id);
       btn.disabled = true;
       btn.textContent = 'Загрузка…';
-      toast('Загружаем модель…');
+      progressState[id] = { loading: true, percent: 0 };
+      renderModelList();
+      toast('Скачиваем ' + (m?.name || 'модель') + '…');
       try {
         const ok = await loadModel(id);
-        toast(ok ? 'Модель готова' : 'Не удалось загрузить');
+        if (ok) {
+          markDownloaded(id, m?.sizeMB);
+          progressState[id] = { loading: false, percent: 100 };
+          toast('Модель готова: ' + (m?.name || id));
+        } else {
+          toast('Не удалось загрузить модель');
+          progressState[id] = { loading: false, percent: 0 };
+        }
       } catch (e) {
         console.error(e);
-        toast('Ошибка загрузки модели');
+        toast('Ошибка: ' + String(e?.message || '').slice(0, 80));
+        progressState[id] = { loading: false, percent: 0 };
       }
+      renderModelList();
+    });
+  });
+
+  box.querySelectorAll('[data-cancel-model]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      cancelLoad();
+      const id = btn.dataset.cancelModel;
+      if (id) progressState[id] = { loading: false, percent: 0 };
+      toast('Загрузка отменена');
+      renderModelList();
+    });
+  });
+
+  box.querySelectorAll('[data-forget-model]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.forgetModel;
+      if (id) unmarkDownloaded(id);
+      toast('Статус сброшен (файлы кэша браузера могут остаться)');
       renderModelList();
     });
   });
@@ -190,8 +306,7 @@ function refreshSubscriptionUI() {
   }
   if (endEl) {
     if (info.plan === 'pro') endEl.textContent = 'Без ограничений';
-    else if (info.trialEnd)
-      endEl.textContent = 'До ' + new Date(info.trialEnd).toLocaleString('ru-RU');
+    else if (info.trialEnd) endEl.textContent = 'До ' + new Date(info.trialEnd).toLocaleString('ru-RU');
     else endEl.textContent = '—';
   }
 }

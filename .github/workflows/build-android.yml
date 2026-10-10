@@ -33,7 +33,27 @@ jobs:
           mkdir -p www
           rsync -a --exclude node_modules --exclude android --exclude .git --exclude www \
             --exclude .github ./ www/
-          # Capacitor needs relative asset paths (already relative)
+          # APK must open chat, not marketing landing
+          cat > www/index.html << 'INNER'
+          <!DOCTYPE html>
+          <html lang="ru">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta name="theme-color" content="#0a0a0f">
+            <title>NYVEX</title>
+            <script>
+              try { localStorage.setItem('nyvex_landing_seen', '1'); } catch (e) {}
+              location.replace('./app.html');
+            </script>
+            <meta http-equiv="refresh" content="0;url=./app.html">
+          </head>
+          <body style="background:#0a0a0f;color:#ececf1;font-family:system-ui;padding:24px;text-align:center;">
+            <p>Открываем NYVEX…</p>
+            <p><a href="./app.html" style="color:#00d9ff;">Перейти в чат</a></p>
+          </body>
+          </html>
+          INNER
 
       - name: Init Capacitor Android
         run: |
@@ -52,3 +72,8 @@ jobs:
           name: nyvex-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+      - name: Copy APK to downloads path (artifact only)
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/nyvex.apk || true
