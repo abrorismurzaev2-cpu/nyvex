@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v6';
-const RUNTIME = 'nyvex-runtime-v6';
+const SHELL = 'nyvex-shell-v7';
+const RUNTIME = 'nyvex-runtime-v7';
 
 const PRECACHE = [
   './',
@@ -93,6 +93,14 @@ function isStatic(url) {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
+  // Never cache payment / yookassa API
+  try {
+    const u = new URL(req.url);
+    if (/\/api\/(payment|yookassa|create-payment|webhook|subscription)/i.test(u.pathname) ||
+        u.hostname.includes('yookassa.ru')) {
+      return; // network only, no SW cache
+    }
+  } catch (_) {}
   if (req.method !== 'GET') return;
   let url;
   try {

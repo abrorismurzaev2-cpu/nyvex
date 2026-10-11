@@ -120,7 +120,7 @@ export const CDN = {
 export const LIMITS = {
   nameMin: 2,
   nameMax: 30,
-  passwordMin: 6,
+  passwordMin: 8,
   avatarMaxBytes: 3 * 1024 * 1024,
   chatTitleMax: 60,
   historyContext: 6,

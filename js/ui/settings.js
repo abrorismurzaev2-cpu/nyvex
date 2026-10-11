@@ -5,7 +5,8 @@ import { $ } from '../core/utils.js';
 import { storage } from '../core/storage.js';
 import { toast } from '../core/toast.js';
 import { clearAllHistory } from '../chat/history.js';
-import { logout } from '../auth/register.js';
+import { logout, deleteAccountData } from '../auth/register.js';
+import { STORAGE_KEYS } from '../core/config.js';
 import {
   getModelDevice,
   getModelStatus,
@@ -165,8 +166,40 @@ export function initSettings() {
 
   // About → show landing
   $('aboutAppBtn')?.addEventListener('click', () => {
-    // Отдельный лендинг-сайт
     window.open('https://abrorismurzaev2-cpu.github.io/nyvex-landing/', '_blank');
+  });
+
+  $('exportDataBtn')?.addEventListener('click', () => {
+    try {
+      const payload = {
+        user: storage.getUser(),
+        chats: storage.getChats(),
+        settings: storage.getSettings(),
+        exportedAt: new Date().toISOString(),
+      };
+      // strip password hash from export display? keep for restore - user owns data
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'nyvex-export-' + Date.now() + '.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast('Данные экспортированы');
+    } catch (e) {
+      console.error(e);
+      toast('Ошибка экспорта');
+    }
+  });
+
+  $('deleteAccountBtn')?.addEventListener('click', () => {
+    const word = prompt('Удалить все данные? Введите УДАЛИТЬ для подтверждения:');
+    if (word !== 'УДАЛИТЬ') {
+      toast('Отменено');
+      return;
+    }
+    const n = deleteAccountData();
+    panel?.classList.remove('show');
+    toast('Удалено ключей: ' + n);
   });
 }
 

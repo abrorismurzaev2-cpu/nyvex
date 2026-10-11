@@ -48,7 +48,7 @@ export function appendMessage(role, text, animate = true, meta = null) {
   if (role === 'ai') {
     avatar = LOGO_SVG;
   } else if (userAv) {
-    avatar = `<img src="${userAv}" alt="">`;
+    avatar = (String(userAv).startsWith('data:image/') ? `<img src="${userAv}" alt="">` : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`);
   } else {
     avatar = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
   }

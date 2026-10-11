@@ -7,6 +7,12 @@ import { $, escapeHtml } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { LIMITS } from '../core/config.js';
 
+function safeAvatarUrl(url) {
+  const u = String(url || '');
+  if (u.startsWith('data:image/jpeg') || u.startsWith('data:image/png') || u.startsWith('data:image/webp')) return u;
+  return '';
+}
+
 export function loadUserUI() {
   const u = storage.getUser() || {};
   const name = u.name || (u.email ? u.email.split('@')[0] : 'Гость');
@@ -17,7 +23,7 @@ export function loadUserUI() {
 
   const avEl = $('userAv');
   if (avEl) {
-    if (av) avEl.innerHTML = `<img src="${av}" alt="">`;
+    if (av) avEl.innerHTML = `<img src="${safeAvatarUrl(av)}" alt="">`;
     else avEl.textContent = (name[0] || '?').toUpperCase();
   }
 
@@ -36,7 +42,7 @@ export function loadUserUI() {
 
   const pAv = $('profileAv');
   if (pAv) {
-    if (av) pAv.innerHTML = `<img src="${av}" alt="">`;
+    if (av) pAv.innerHTML = `<img src="${safeAvatarUrl(av)}" alt="">`;
     else pAv.textContent = (name[0] || '?').toUpperCase();
   }
 }

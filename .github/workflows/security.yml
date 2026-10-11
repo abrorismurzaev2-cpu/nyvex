@@ -1,0 +1,45 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  secrets-and-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan for common secret patterns
+        run: |
+          set +e
+          echo "Scanning working tree..."
+          if grep -RniE 'ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk_live_[A-Za-z0-9]+|live_[A-Za-z0-9]{30,}|BEGIN RSA PRIVATE KEY|YOOKASSA_SECRET_KEY\s*=\s*["\x27]?[a-zA-Z0-9]' \
+            --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=android \
+            --exclude='*.png' --exclude='*.jpg' --exclude='*.woff2' --exclude='*.apk' . ; then
+            echo "::error::Possible secrets found in repository"
+            exit 1
+          fi
+          echo "No high-confidence secret patterns found."
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm audit (informational)
+        run: |
+          if [ -f package.json ]; then
+            npm install --package-lock-only 2>/dev/null || true
+            npm audit --audit-level=high || true
+          else
+            echo "No package.json dependencies to audit"
+          fi
