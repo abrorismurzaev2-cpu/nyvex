@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v8';
-const RUNTIME = 'nyvex-runtime-v8';
+const SHELL = 'nyvex-shell-v9';
+const RUNTIME = 'nyvex-runtime-v9';
 
 const PRECACHE = [
   './',
@@ -139,4 +139,20 @@ self.addEventListener('fetch', (event) => {
       })
     );
   }
+});
+
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ('focus' in c) {
+          c.postMessage({ type: 'notification-click' });
+          return c.focus();
+        }
+      }
+      if (clients.openWindow) return clients.openWindow('./app.html');
+    })
+  );
 });

@@ -17,14 +17,23 @@ import {
   hidePaymentModal,
   activatePro,
   cancelPro,
+  getCachedState,
 } from './core/trial.js';
 import { getDeviceId } from './core/device.js';
+import { initNotificationClick, checkTrialNotifications, ensureNotificationPermission } from './ui/notifications.js';
 
 export function enterApp() {
   showScreen('app');
   loadHistory();
   createChat();
   startTrialBadge();
+  initNotificationClick();
+  // trial push checks each minute
+  setInterval(() => {
+    try {
+      checkTrialNotifications(getCachedState());
+    } catch {}
+  }, 60000);
 }
 
 async function boot() {
@@ -39,6 +48,16 @@ async function boot() {
     document.getElementById('cancelLoadBtn')?.addEventListener('click', () => {
       cancelLoad();
       enterApp();
+    });
+    document.getElementById('retryLoadBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('retryLoadBtn');
+      if (btn) btn.style.display = 'none';
+      try {
+        await loadModel();
+      } catch (e) {
+        console.error(e);
+        if (btn) btn.style.display = '';
+      }
     });
 
     $('newChatBtn')?.addEventListener('click', () => createChat());

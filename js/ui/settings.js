@@ -94,12 +94,67 @@ export function initSettings() {
   });
 }
 
+function formatBytes(n) {
+  if (!n || n < 0) return '0 МБ';
+  return (n / 1024 / 1024).toFixed(0) + ' МБ';
+}
+function formatSpeed(bps) {
+  if (!bps || bps < 1024) return '';
+  return (bps / 1024 / 1024).toFixed(1) + ' МБ/с';
+}
+function formatEta(sec) {
+  if (!sec || !isFinite(sec) || sec <= 0) return '';
+  if (sec < 60) return Math.ceil(sec) + ' сек';
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60);
+    const s = Math.ceil(sec % 60);
+    return m + ' мин ' + s + ' сек';
+  }
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return h + ' ч ' + m + ' мин';
+}
+
 function updateAiStatus(st) {
   const el = $('aiLoadStatus');
   const bar = $('aiLoadBar');
+  const meta = $('aiLoadMeta');
+  const btn = $('aiLoadBtn');
   if (el) el.textContent = st.label || '';
   if (bar) {
     bar.style.width = (st.pct || 0) + '%';
     bar.parentElement?.classList.toggle('done', st.state === 'ready');
+  }
+  if (meta) {
+    if (st.state === 'loading') {
+      const parts = [];
+      if (st.loaded || st.total) parts.push(formatBytes(st.loaded) + ' / ' + formatBytes(st.total || 900 * 1024 * 1024));
+      const sp = formatSpeed(st.speed);
+      if (sp) parts.push('⚡ ' + sp);
+      const eta = formatEta(st.eta);
+      if (eta) parts.push('⏱ ~' + eta);
+      meta.textContent = parts.join(' · ');
+    } else if (st.state === 'ready') {
+      meta.textContent = 'Готов к работе';
+    } else if (st.state === 'error') {
+      meta.textContent = st.error || 'Ошибка загрузки';
+    } else {
+      meta.textContent = 'Нажмите «Загрузить AI»';
+    }
+  }
+  if (btn) {
+    if (st.state === 'loading') {
+      btn.textContent = 'Отменить';
+      btn.dataset.act = 'cancel';
+      btn.style.display = '';
+    } else if (st.state === 'ready') {
+      btn.textContent = 'Перезагрузить';
+      btn.dataset.act = 'reload';
+      btn.style.display = '';
+    } else {
+      btn.textContent = 'Загрузить AI';
+      btn.dataset.act = 'load';
+      btn.style.display = '';
+    }
   }
 }

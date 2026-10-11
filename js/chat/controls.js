@@ -12,6 +12,7 @@ import {
   getCachedState,
   refreshTrialCache,
 } from '../core/trial.js';
+import { notifyResponseReady, ensureNotificationPermission } from '../ui/notifications.js';
 
 let isGenerating = false;
 let deepThinking = false;
@@ -96,6 +97,7 @@ async function sendMessage() {
   isGenerating = true;
   updateSendBtn();
   showTyping();
+  ensureNotificationPermission().catch(() => {});
 
   try {
     const history = (chat.messages || []).slice(0, -1);
@@ -106,6 +108,7 @@ async function sendMessage() {
     const ms = typeof result === 'object' ? result.ms : 0;
     addMessageToCurrent('ai', answer, { thinking, thinkingMs: ms });
     appendMessage('ai', answer, true, { thinking, thinkingMs: ms });
+    notifyResponseReady();
   } catch (e) {
     console.error('sendMessage', e);
     removeTyping();

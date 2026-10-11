@@ -17,6 +17,13 @@ let mainGenerator = null;
 let pendingGenerate = new Map();
 let reqSeq = 0;
 let loadPct = 0;
+let loadLoaded = 0;
+let loadTotal = 0;
+let loadSpeed = 0;
+let loadEta = 0;
+let loadFromCache = false;
+let stallTimer = null;
+let lastProgressAt = 0;
 let statusListeners = [];
 
 let activeModelId = MODEL_ID;
@@ -42,10 +49,13 @@ export function getLoadPct() {
 }
 
 export function getModelStatus() {
-  if (loadError && !modelReady) return { state: 'error', label: 'Ошибка', pct: loadPct, device: modelDevice };
-  if (modelReady) return { state: 'ready', label: 'AI готов к работе ✓', pct: 100, device: modelDevice };
-  if (loading) return { state: 'loading', label: 'Загрузка AI · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice };
-  return { state: 'idle', label: 'AI не загружен', pct: 0, device: modelDevice };
+  if (loadError && !modelReady)
+    return { state: 'error', label: 'Ошибка: ' + String(loadError).slice(0, 80), pct: loadPct, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: loadSpeed, eta: loadEta, error: loadError };
+  if (modelReady)
+    return { state: 'ready', label: loadFromCache ? 'AI готов к работе ✓ · из кэша' : 'AI готов к работе ✓', pct: 100, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: 0, eta: 0 };
+  if (loading)
+    return { state: 'loading', label: 'Загрузка AI · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: loadSpeed, eta: loadEta };
+  return { state: 'idle', label: 'AI не загружен', pct: 0, device: modelDevice, loaded: 0, total: 0, speed: 0, eta: 0 };
 }
 
 export function onModelStatus(fn) {
@@ -118,6 +128,8 @@ function updateUI(payload) {
 
   if (payload.status === 'from_cache' || payload.status === 'done') {
     loadPct = 100;
+    loadFromCache = payload.status === 'from_cache';
+    updateRingProgress(100);
     if (st) st.textContent = payload.status === 'from_cache' ? 'Загрузка из кэша ✓' : 'Готово!';
     if (det) det.textContent = 'Модель · ' + modelDevice;
     if (fill) fill.style.width = '100%';
@@ -131,6 +143,13 @@ function updateUI(payload) {
     const loaded = payload.loaded || 0;
     const pct = payload.pct != null ? payload.pct : total ? (loaded / total) * 100 : 0;
     loadPct = Math.min(99, pct);
+    loadLoaded = loaded;
+    loadTotal = total;
+    loadSpeed = payload.speed || 0;
+    loadEta = payload.eta || 0;
+    lastProgressAt = Date.now();
+    touchStallWatch();
+    updateRingProgress(loadPct);
     if (fill) fill.style.width = loadPct + '%';
     if (pc) pc.textContent = Math.round(loadPct) + '%';
     if (st) st.textContent = 'Скачивание модели…';
@@ -204,6 +223,38 @@ function ensureWorker() {
     useWorker = false;
     return null;
   }
+}
+
+
+function updateRingProgress(pct) {
+  try {
+    const ring = document.getElementById('loadRingProgress');
+    if (!ring) return;
+    const r = 42;
+    const c = 2 * Math.PI * r;
+    const offset = c - (Math.min(100, Math.max(0, pct)) / 100) * c;
+    ring.style.strokeDasharray = c + ' ' + c;
+    ring.style.strokeDashoffset = String(offset);
+  } catch {}
+}
+
+function touchStallWatch() {
+  if (stallTimer) clearTimeout(stallTimer);
+  if (!loading || modelReady) return;
+  stallTimer = setTimeout(() => {
+    if (modelReady || !loading) return;
+    const idle = Date.now() - (lastProgressAt || Date.now());
+    if (idle >= 60000) {
+      loadError = 'Нет прогресса 60 сек. Проверьте интернет / Wi‑Fi.';
+      const st = $('loadStatus');
+      const det = $('loadDetail');
+      if (st) st.textContent = 'Ошибка сети';
+      if (det) det.textContent = loadError;
+      const retry = $('retryLoadBtn');
+      if (retry) retry.style.display = '';
+      emitStatus();
+    }
+  }, 62000);
 }
 
 export function cancelLoad() {
