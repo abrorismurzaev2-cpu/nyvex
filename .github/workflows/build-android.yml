@@ -28,37 +28,76 @@ jobs:
           npm install
           npm install @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
 
-      - name: Prepare webDir (www)
+      - name: Prepare webDir (www) — chat only, no landing
         run: |
           mkdir -p www
           rsync -a --exclude node_modules --exclude android --exclude .git --exclude www \
-            --exclude .github ./ www/
-          # APK must open chat, not marketing landing
-          cat > www/index.html << 'INNER'
-          <!DOCTYPE html>
-          <html lang="ru">
-          <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta name="theme-color" content="#0a0a0f">
-            <title>NYVEX</title>
-            <script>
-              try { localStorage.setItem('nyvex_landing_seen', '1'); } catch (e) {}
-              location.replace('./app.html');
-            </script>
-            <meta http-equiv="refresh" content="0;url=./app.html">
-          </head>
-          <body style="background:#0a0a0f;color:#ececf1;font-family:system-ui;padding:24px;text-align:center;">
-            <p>Открываем NYVEX…</p>
-            <p><a href="./app.html" style="color:#00d9ff;">Перейти в чат</a></p>
-          </body>
-          </html>
-          INNER
+            --exclude .github --exclude downloads ./ www/
+          # CRITICAL: native entry must be chat, not marketing landing
+          cp www/app.html www/index.html
+          # Ensure relative paths still work (app.html assets use same relative base)
+          python3 - <<'PY'
+          from pathlib import Path
+          # Soften absolute edge cases: index is a copy of app
+          p = Path("www/index.html")
+          t = p.read_text()
+          # mark build
+          if "nyvex-native-v2" not in t:
+              t = t.replace("<head>", "<head>\n  <!-- nyvex-native-v2: chat entry -->", 1)
+          p.write_text(t)
+          print("www/index.html = chat shell")
+          PY
 
       - name: Init Capacitor Android
         run: |
           npx cap add android || true
           npx cap sync android
+
+      - name: Apply launcher icons + version
+        run: |
+          pip install pillow -q
+          python3 - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import shutil, re
+
+          src = Path("assets/icons/icon-512.png")
+          im = Image.open(src).convert("RGBA")
+          densities = {
+              "mipmap-mdpi": 48,
+              "mipmap-hdpi": 72,
+              "mipmap-xhdpi": 96,
+              "mipmap-xxhdpi": 144,
+              "mipmap-xxxhdpi": 192,
+          }
+          res = Path("android/app/src/main/res")
+          for folder, size in densities.items():
+              d = res / folder
+              d.mkdir(parents=True, exist_ok=True)
+              icon = im.resize((size, size), Image.Resampling.LANCZOS)
+              for name in ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png"):
+                  icon.save(d / name)
+          # splash color
+          values = res / "values"
+          values.mkdir(parents=True, exist_ok=True)
+          (values / "colors.xml").write_text("""<?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="colorPrimary">#7c5cff</color>
+              <color name="colorPrimaryDark">#0a0a0f</color>
+              <color name="colorAccent">#00d9ff</color>
+              <color name="splash_background">#0a0a0f</color>
+          </resources>
+          """)
+          # versionName 2.0.0
+          gradle = Path("android/app/build.gradle")
+          if gradle.exists():
+              t = gradle.read_text()
+              t = re.sub(r'versionCode\s+\d+', 'versionCode 20', t)
+              t = re.sub(r'versionName\s+"[^"]*"', 'versionName "2.0.0"', t)
+              gradle.write_text(t)
+              print("version set 2.0.0")
+          print("icons applied")
+          PY
 
       - name: Build Debug APK
         run: |
@@ -66,14 +105,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: nyvex-debug-apk
+          name: nyvex-apk-v2
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Copy APK to downloads path (artifact only)
+      - name: Stage APK as nyvex.apk
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/debug/app-debug.apk out/nyvex.apk || true
+          cp android/app/build/outputs/apk/debug/app-debug.apk out/nyvex-2.0.0.apk
+          ls -la out/
