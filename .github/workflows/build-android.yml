@@ -34,63 +34,37 @@ jobs:
           rsync -a --exclude node_modules --exclude android --exclude .git --exclude www \
             --exclude .github --exclude downloads ./ www/
           cp www/app.html www/index.html
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path("www/index.html")
-          t = p.read_text()
-          if "nyvex-native-v2" not in t:
-              t = t.replace("<head>", "<head>\n  <!-- nyvex-native-v2: chat entry -->", 1)
-          p.write_text(t)
-          print("www/index.html = chat shell")
-          PY
+          python3 -c "from pathlib import Path; p=Path('www/index.html'); t=p.read_text();\n\
+p.write_text(t if 'nyvex-native-v2' in t else t.replace('<head>', '<head>\\n  <!-- nyvex-native-v2 -->', 1))"
 
       - name: Init Capacitor Android
         run: |
           npx cap add android || true
           npx cap sync android
 
-      - name: Apply launcher icons + base version
+      - name: Apply launcher icons + version
         run: |
           pip install pillow -q
-          python3 - <<'PY'
+          python3 << 'PY'
           from pathlib import Path
           from PIL import Image
           import re
-
-          src = Path("assets/icons/icon-512.png")
-          im = Image.open(src).convert("RGBA")
-          densities = {
-              "mipmap-mdpi": 48,
-              "mipmap-hdpi": 72,
-              "mipmap-xhdpi": 96,
-              "mipmap-xxhdpi": 144,
-              "mipmap-xxxhdpi": 192,
-          }
+          im = Image.open("assets/icons/icon-512.png").convert("RGBA")
+          densities = {"mipmap-mdpi":48,"mipmap-hdpi":72,"mipmap-xhdpi":96,"mipmap-xxhdpi":144,"mipmap-xxxhdpi":192}
           res = Path("android/app/src/main/res")
           for folder, size in densities.items():
               d = res / folder
               d.mkdir(parents=True, exist_ok=True)
               icon = im.resize((size, size), Image.Resampling.LANCZOS)
-              for name in ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png"):
+              for name in ("ic_launcher.png","ic_launcher_round.png","ic_launcher_foreground.png"):
                   icon.save(d / name)
-          values = res / "values"
-          values.mkdir(parents=True, exist_ok=True)
-          (values / "colors.xml").write_text("""<?xml version="1.0" encoding="utf-8"?>
-          <resources>
-              <color name="colorPrimary">#7c5cff</color>
-              <color name="colorPrimaryDark">#0a0a0f</color>
-              <color name="colorAccent">#00d9ff</color>
-              <color name="splash_background">#0a0a0f</color>
-          </resources>
-          """)
           gradle = Path("android/app/build.gradle")
           if gradle.exists():
               t = gradle.read_text()
-              t = re.sub(r'versionCode\s+\d+', 'versionCode 21', t)
+              t = re.sub(r"versionCode\s+\d+", "versionCode 21", t)
               t = re.sub(r'versionName\s+"[^"]*"', 'versionName "2.0.1"', t)
               gradle.write_text(t)
-              print("version 2.0.1 / 21")
-          print("icons applied")
+          print("icons + version 2.0.1")
           PY
 
       - name: Decode release keystore from secrets
@@ -98,99 +72,15 @@ jobs:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         run: |
           if [ -z "$KEYSTORE_BASE64" ]; then
-            echo "::error::Secret KEYSTORE_BASE64 is not set. Add it in GitHub → Settings → Secrets."
-            echo "Also set: KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD"
+            echo "::error::Secret KEYSTORE_BASE64 is missing. See docs/RUSTORE-RELEASE.md"
             exit 1
           fi
           echo "$KEYSTORE_BASE64" | base64 -d > "$GITHUB_WORKSPACE/nyvex-release.keystore"
-          ls -la "$GITHUB_WORKSPACE/nyvex-release.keystore"
-          # sanity: file must not be empty
           test -s "$GITHUB_WORKSPACE/nyvex-release.keystore"
+          ls -la "$GITHUB_WORKSPACE/nyvex-release.keystore"
 
       - name: Configure release signing in build.gradle
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
-            echo "::error::Missing KEYSTORE_PASSWORD / KEY_ALIAS / KEY_PASSWORD secrets"
-            exit 1
-          fi
-          python3 - <<'PY'
-          from pathlib import Path
-          import os, re
-
-          gradle = Path("android/app/build.gradle")
-          t = gradle.read_text()
-
-          store_file = str(Path(os.environ["GITHUB_WORKSPACE"]) / "nyvex-release.keystore").replace("\\", "/")
-
-          signing_block = f'''
-      signingConfigs {{
-          release {{
-              storeFile file("{store_file}")
-              storePassword System.getenv("KEYSTORE_PASSWORD")
-              keyAlias System.getenv("KEY_ALIAS")
-              keyPassword System.getenv("KEY_PASSWORD")
-          }}
-      }}
-'''
-
-          # Inject signingConfigs before buildTypes if missing
-          if "signingConfigs" not in t:
-              if "buildTypes" in t:
-                  t = t.replace("buildTypes", signing_block + "\n    buildTypes", 1)
-              else:
-                  # insert before closing of android { — last resort after defaultConfig
-                  t = re.sub(
-                      r"(defaultConfig\s*\{[\s\S]*?\n\s*\})",
-                      r"\1\n" + signing_block,
-                      t,
-                      count=1,
-                  )
-
-          # Harden release buildType
-          release_bt = '''
-        release {
-            minifyEnabled true
-            shrinkResources true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
-        }
-'''
-          # Replace existing release { ... } inside buildTypes
-          t2, n = re.subn(
-              r"release\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",
-              release_bt.strip(),
-              t,
-              count=1,
-          )
-          if n == 0:
-              # insert into buildTypes
-              t2 = re.sub(
-                  r"(buildTypes\s*\{)",
-                  r"\1\n" + release_bt,
-                  t,
-                  count=1,
-              )
-          t = t2
-
-          # Ensure proguard rules file exists
-          pr = Path("android/app/proguard-rules.pro")
-          if not pr.exists():
-              pr.write_text("""# NYVEX Capacitor / WebView
--keep class com.getcapacitor.** { *; }
--dontwarn com.getcapacitor.**
--keepattributes *Annotation*
-""")
-
-          gradle.write_text(t)
-          print("--- build.gradle (signing excerpt) ---")
-          for i, line in enumerate(t.splitlines(), 1):
-              if "signing" in line.lower() or "minify" in line or "release" in line or "version" in line:
-                  print(f"{i}: {line}")
-          PY
+        run: python3 scripts/configure-release-signing.py
 
       - name: Build Release APK
         env:
@@ -198,32 +88,29 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          if [ -z "$KEYSTORE_PASSWORD" ] || [ -z "$KEY_ALIAS" ] || [ -z "$KEY_PASSWORD" ]; then
+            echo "::error::Need KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD secrets"
+            exit 1
+          fi
           cd android
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
 
-      - name: Locate release APK
-        id: apk
+      - name: Locate and verify release APK
         run: |
           set -e
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
-          echo "Found: $APK"
-          ls -la android/app/build/outputs/apk/ -R || true
-          test -n "$APK"
-          test -f "$APK"
+          echo "APK=$APK"
+          ls -laR android/app/build/outputs/apk || true
+          test -n "$APK" && test -f "$APK"
           cp "$APK" "$GITHUB_WORKSPACE/nyvex-release.apk"
-          echo "path=$GITHUB_WORKSPACE/nyvex-release.apk" >> "$GITHUB_OUTPUT"
-
-      - name: Verify release signature
-        run: |
           jarsigner -verify -verbose -certs "$GITHUB_WORKSPACE/nyvex-release.apk" | tee /tmp/verify.txt
           grep -qi "jar verified" /tmp/verify.txt
-          # Debug builds often say "CN=Android Debug" — reject that
           if grep -qi "CN=Android Debug" /tmp/verify.txt; then
-            echo "::error::APK is signed with Android Debug certificate"
+            echo "::error::Signed with Android Debug — rejected"
             exit 1
           fi
-          echo "Signature OK (not Android Debug)"
+          echo "Release signature OK"
 
       - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
@@ -234,5 +121,4 @@ jobs:
 
       - name: Cleanup keystore
         if: always()
-        run: |
-          rm -f "$GITHUB_WORKSPACE/nyvex-release.keystore" || true
+        run: rm -f "$GITHUB_WORKSPACE/nyvex-release.keystore" || true
