@@ -1,12 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-  <defs>
-    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#7c5cff"/>
-      <stop offset="100%" stop-color="#00d9ff"/>
-    </linearGradient>
-  </defs>
-  <rect width="24" height="24" rx="6" fill="url(#g)"/>
-  <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)" stroke="#fff"/>
-  <path d="M12 3 L12 21" stroke="#fff"/>
-  <circle cx="12" cy="12" r="2.2" fill="#fff" stroke="none"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+  <ellipse cx="12" cy="12" rx="9.5" ry="4.2" transform="rotate(-28 12 12)"/>
+  <path d="M12 2.5 L12 21.5"/>
+  <circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/>
 </svg>
