@@ -1,33 +1,27 @@
 /**
  * NYVEX — main.js
- * Boot: session first, model in background
+ * No auth: loading → chat, device trial, model in background
  */
 import { initRouter, showScreen } from './core/router.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
-import { initAuth, setEnterAppCallback } from './auth/register.js';
-import { hasSession } from './auth/login.js';
-import { loadUserUI, initProfileEdit } from './auth/profile.js';
 import { loadModel, cancelLoad, isModelReady } from './ai/loader.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
 import { initSidebar } from './ui/sidebar.js';
 import { initSettings } from './ui/settings.js';
-import { startTrialBadge, ensureTrialOnUser } from './core/trial.js';
-import { storage } from './core/storage.js';
+import {
+  startTrialBadge,
+  refreshTrialCache,
+  showPaymentModal,
+  hidePaymentModal,
+  activatePro,
+  cancelPro,
+} from './core/trial.js';
+import { getDeviceId } from './core/device.js';
 
 export function enterApp() {
-  // ensure trial fields
-  try {
-    const u = storage.getUser();
-    if (u) {
-      storage.setUser(ensureTrialOnUser(u));
-    }
-  } catch (e) {
-    console.error(e);
-  }
   showScreen('app');
-  loadUserUI();
   loadHistory();
   createChat();
   startTrialBadge();
@@ -37,9 +31,6 @@ async function boot() {
   try {
     initRouter();
     initToast();
-    setEnterAppCallback(enterApp);
-    initAuth();
-    initProfileEdit();
     initSidebar();
     initSettings();
     initControls();
@@ -47,14 +38,25 @@ async function boot() {
 
     document.getElementById('cancelLoadBtn')?.addEventListener('click', () => {
       cancelLoad();
-      setTimeout(() => {
-        if (hasSession()) enterApp();
-        else showScreen('auth');
-      }, 200);
+      enterApp();
     });
 
     $('newChatBtn')?.addEventListener('click', () => createChat());
     $('homeLogo')?.addEventListener('click', () => createChat());
+
+    $('trialBadge')?.addEventListener('click', () => showPaymentModal());
+    $('trialModalClose')?.addEventListener('click', hidePaymentModal);
+    $('trialModalLater')?.addEventListener('click', hidePaymentModal);
+    $('trialModalPay')?.addEventListener('click', () => activatePro());
+    $('subscribeBtn')?.addEventListener('click', () => activatePro());
+    $('cancelSubBtn')?.addEventListener('click', async () => {
+      if (confirm('Отключить автопродление? Доступ сохранится до конца оплаченного периода.')) {
+        await cancelPro();
+      }
+    });
+    $('trialModal')?.addEventListener('click', (e) => {
+      if (e.target === $('trialModal')) hidePaymentModal();
+    });
 
     document.addEventListener('gesturestart', (e) => e.preventDefault());
 
@@ -62,58 +64,40 @@ async function boot() {
       navigator.serviceWorker.register('./service-worker.js').catch(() => {});
     }
 
-    // BUG2 fix: if logged in → enter app immediately, load model in background
-    if (hasSession()) {
-      enterApp();
-      // background model load (non-blocking)
-      loadModel()
-        .then((ok) => {
-          if (!ok) toast('Модель не загрузилась — интерфейс доступен');
-          // refresh welcome status if empty chat
-          try {
-            const status = document.querySelector('.welcome-status span:last-child');
-            if (status && isModelReady()) status.textContent = 'Модель готова';
-            document.querySelector('.welcome-status')?.classList.remove('loading');
-          } catch {}
-        })
-        .catch((e) => {
-          console.error('bg model load', e);
-          toast('Не удалось загрузить модель. Попробуйте позже.');
-        });
-      return;
-    }
+    // Device ID + trial start
+    await getDeviceId();
+    await refreshTrialCache();
 
-    // Not logged in: short loading then auth (model still loads in background)
     showScreen('loading');
+    // Enter chat quickly; model loads in parallel
     const loadPromise = loadModel().catch((e) => {
       console.error(e);
       return false;
     });
 
-    // Don't wait forever — show auth after max 2.5s even if model still downloading
     await Promise.race([
-      loadPromise.then(() => true),
-      new Promise((r) => setTimeout(r, 2500)),
+      loadPromise,
+      new Promise((r) => setTimeout(r, 1800)),
     ]);
 
-    if (hasSession()) {
-      enterApp();
-    } else {
-      showScreen('auth');
-    }
+    enterApp();
 
     loadPromise.then((ok) => {
       if (!ok && !isModelReady()) {
-        // silent if still loading later
+        toast('AI загружается в фоне. При первом запуске нужен интернет.');
       }
+      try {
+        const status = document.querySelector('.welcome-status span:last-child');
+        if (status && isModelReady()) status.textContent = 'AI готов';
+        document.querySelector('.welcome-status')?.classList.remove('loading');
+      } catch {}
     });
   } catch (e) {
-    console.error('boot failed', e);
+    console.error('boot', e);
     try {
-      if (hasSession()) enterApp();
-      else showScreen('auth');
+      enterApp();
     } catch {
-      showScreen('auth');
+      showScreen('app');
     }
   }
 }

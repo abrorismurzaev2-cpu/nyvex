@@ -54,86 +54,6 @@
   </div>
 
   <!-- AUTH -->
-  <div class="screen" id="screen-auth">
-    <div class="auth-card">
-      <div class="auth-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-          <ellipse cx="12" cy="12" rx="9.5" ry="4.2" transform="rotate(-28 12 12)"/>
-          <path d="M12 3 L12 21"/>
-          <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
-        </svg>
-      </div>
-      <div class="auth-title" id="authTitle">Добро пожаловать в <span>NYVEX</span></div>
-      <div class="auth-sub" id="authSub">Загрузите фото и укажите имя — они будут в чате.</div>
-
-      <input type="file" id="avatarInput" accept="image/*" style="display:none">
-
-      <div class="avatar-picker" data-reg>
-        <div class="avatar-circle" id="avatarCircle">
-          <div class="av-placeholder" id="avPlaceholder">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span>ФОТО</span>
-          </div>
-          <img id="avatarPreview" style="display:none" alt="">
-          <div class="avatar-overlay">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </div>
-        </div>
-        <div class="avatar-label">Нажмите, чтобы <b>загрузить фото</b></div>
-      </div>
-
-      <div class="field" id="f-name" data-reg>
-        <input type="text" id="name" placeholder="Ваше имя" autocomplete="name" maxlength="30" />
-        <div class="err">Введите имя (мин. 2 символа)</div>
-      </div>
-
-      <div class="field" id="f-email">
-        <input type="email" id="email" placeholder="Email" autocomplete="email" inputmode="email" />
-        <div class="err">Введите корректный email</div>
-      </div>
-      <div class="field" id="f-pass" data-reg>
-        <input type="password" id="password" placeholder="Пароль (мин. 6 символов)" autocomplete="new-password" />
-        <div class="err">Минимум 6 символов</div>
-      </div>
-
-      <div class="auth-legal" data-reg>
-        <label class="checkbox-row">
-          <input type="checkbox" id="agreeTerms" />
-          <span>Я согласен с <a href="legal/terms.html" target="_blank" rel="noopener">Условиями</a> и <a href="legal/privacy.html" target="_blank" rel="noopener">Политикой конфиденциальности</a></span>
-        </label>
-        <label class="checkbox-row">
-          <input type="checkbox" id="agreeAge" />
-          <span>Мне 13 лет или больше</span>
-        </label>
-      </div>
-
-      <button type="button" class="auth-btn" id="authBtn">
-        <span class="spinner"></span>
-        <span id="authBtnText">Создать аккаунт</span>
-      </button>
-
-      <div class="auth-switch">
-        <span id="switchText">Уже есть аккаунт?</span>
-        <a id="switchBtn" role="button" tabindex="0">Войти</a>
-      </div>
-
-      <div class="trust">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 2 L20 7 V12 c0 5-4 8-8 9-4-1-8-4-8-9 V7 Z"/>
-          <path d="M9 12l2 2 4-4"/>
-        </svg>
-        Данные хранятся только у вас
-      </div>
-    </div>
-  </div>
-
-  <!-- APP -->
   <div class="screen" id="screen-app">
     <div class="sb-overlay" id="sbOverlay"></div>
 
@@ -162,15 +82,7 @@
       <div class="sb-section">История</div>
       <div class="sb-list" id="sbList"></div>
 
-      <div class="sb-user" id="userBtn">
-        <div class="user-av" id="userAv">?</div>
-        <div class="user-info">
-          <div class="user-name" id="userName">Гость</div>
-          <div class="user-plan" id="userPlan"><span class="pro-dot"></span> Pro</div>
-        </div>
-        <svg class="user-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="6" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="18" r="1"/></svg>
-      </div>
-    </aside>
+      </aside>
 
     <main class="chat-main">
       <header class="chat-top">
@@ -247,52 +159,24 @@
         </button>
       </div>
       <div class="settings-body">
-        <div class="profile-block" id="profileBlock">
-          <div class="profile-av-wrap">
-            <div class="profile-av" id="profileAv">?</div>
-            <div class="profile-av-edit">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-            </div>
-          </div>
-          <div class="profile-info">
-            <div class="profile-name" id="profileName">Гость</div>
-            <div class="profile-email" id="profileEmail">guest@nyvex</div>
-            <div class="profile-plan">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l2.5 5 5.5.8-4 3.9.9 5.5L12 14.7l-4.9 2.5.9-5.5-4-3.9 5.5-.8z"/>
-              </svg>
-              NYVEX Pro
-            </div>
-          </div>
-        </div>
-
-        
         <div class="setting-section-title">Подписка</div>
         <div class="sub-block" id="subBlock">
           <div class="sub-status" id="trialStatusLabel">Пробный период</div>
           <div class="sub-progress"><div class="sub-progress-fill" id="trialProgress"></div></div>
           <div class="sub-end" id="trialEndDate">—</div>
           <div class="sub-actions">
-            <button type="button" class="btn btn-sm btn-primary" id="subscribeBtn">Оформить — 290 ₽/мес</button>
-            <button type="button" class="btn btn-sm btn-ghost" id="cancelSubBtn">Отменить</button>
+            <button type="button" class="btn btn-sm btn-primary" id="subscribeBtn">Оплатить 290 ₽ / 30 дней</button>
+            <button type="button" class="btn btn-sm btn-ghost" id="cancelSubBtn">Отменить автопродление</button>
           </div>
+          <div id="paymentHistory" style="margin-top:10px;font-size:12px;color:var(--dim);"></div>
         </div>
 
-        <div class="setting-section-title">Модели</div>
-        <div id="modelList" class="model-list"></div>
-
-        <div class="setting-item" id="modelInfoBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Модель: <span id="modelName">Qwen2.5-0.5B</span></div>
-            <div class="setting-item-desc" id="modelInfoDesc">Загрузка…</div>
-          </div>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:var(--dim);flex-shrink:0">
-            <path d="M9 6l6 6-6 6"/>
-          </svg>
+        <div class="setting-section-title">AI</div>
+        <div class="sub-block" id="aiStatusBlock">
+          <div class="sub-status" id="aiLoadStatus">Загрузка AI…</div>
+          <div class="sub-progress"><div class="sub-progress-fill" id="aiLoadBar" style="width:0%"></div></div>
         </div>
+
         <div class="setting-item" data-setting="history">
           <div class="setting-item-info">
             <div class="setting-item-title">Сохранять историю</div>
@@ -313,107 +197,61 @@
             <div class="setting-item-desc">Удалить все чаты с устройства</div>
           </div>
         </div>
-        
-        <div class="setting-section-title">Правовая информация</div>
-        <a class="setting-item" href="legal/offer.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Публичная оферта</div>
-            <div class="setting-item-desc">Договор на оказание услуг</div>
-          </div>
-        </a>
-        <a class="setting-item" href="legal/requisites.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Реквизиты</div>
-            <div class="setting-item-desc">ИНН и данные исполнителя</div>
-          </div>
-        </a>
-        <a class="setting-item" href="legal/delivery.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Как получить доступ</div>
-            <div class="setting-item-desc">Активация после оплаты</div>
-          </div>
-        </a>
-        <a class="setting-item" href="legal/privacy.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Политика конфиденциальности</div>
-          </div>
-        </a>
-        <a class="setting-item" href="legal/terms.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Условия использования</div>
-          </div>
-        </a>
-        <a class="setting-item" href="legal/cookies.html" target="_blank" rel="noopener">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Политика Cookie</div>
-          </div>
-        </a>
-
-                <div class="setting-item" id="exportDataBtn">
+        <div class="setting-item" id="exportDataBtn">
           <div class="setting-item-info">
             <div class="setting-item-title">Экспорт данных</div>
-            <div class="setting-item-desc">Скачать JSON (чаты и настройки)</div>
+            <div class="setting-item-desc">Скачать JSON</div>
           </div>
         </div>
         <div class="setting-item danger" id="deleteAccountBtn">
           <div class="setting-item-info">
-            <div class="setting-item-title">Удалить аккаунт и данные</div>
-            <div class="setting-item-desc">Очистить все ключи nyvex_* на устройстве</div>
+            <div class="setting-item-title">Удалить все данные</div>
+            <div class="setting-item-desc">Очистить localStorage устройства</div>
           </div>
         </div>
+
+        <div class="setting-section-title">Правовая информация</div>
+        <a class="setting-item" href="legal/offer.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Публичная оферта</div></div>
+        </a>
+        <a class="setting-item" href="legal/requisites.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Реквизиты</div></div>
+        </a>
+        <a class="setting-item" href="legal/delivery.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Как получить доступ</div></div>
+        </a>
+        <a class="setting-item" href="legal/privacy.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Конфиденциальность</div></div>
+        </a>
+        <a class="setting-item" href="legal/terms.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Условия</div></div>
+        </a>
+        <a class="setting-item" href="legal/cookies.html" target="_blank" rel="noopener">
+          <div class="setting-item-info"><div class="setting-item-title">Cookie</div></div>
+        </a>
+
         <div class="setting-item" id="aboutAppBtn">
           <div class="setting-item-info">
             <div class="setting-item-title">О приложении</div>
-            <div class="setting-item-desc">Открыть лендинг / информацию о NYVEX</div>
+            <div class="setting-item-desc">Версия 2.0 · без регистрации</div>
           </div>
         </div>
-        <div class="setting-item danger" id="logoutBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Выйти из аккаунта</div>
-            <div class="setting-item-desc">Данные останутся на устройстве</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- MODEL INFO MODAL -->
-  <div class="settings-panel" id="modelModal">
-    <div class="settings-window" style="max-width:420px;">
-      <div class="settings-head">
-        <h3>Информация о модели</h3>
-        <button type="button" class="icon-btn" id="modelModalClose" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-      <div class="settings-body">
-        <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; font-size:13px;">
-          <span style="color:var(--dim);">LLM</span>
-          <span style="color:#fff; font-weight:600;">Qwen2.5-0.5B-Instruct</span>
         </div>
-        <div style="padding:12px 14px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; font-size:13px;">
-          <span style="color:var(--dim);">Устройство</span>
-          <span style="color:#fff; font-weight:600;" id="miDevice">—</span>
-        </div>
-        <div style="padding:12px 14px; display:flex; justify-content:space-between; font-size:13px;">
-          <span style="color:var(--dim);">Статус</span>
-          <span style="color:#fff; font-weight:600;" id="miStatus">—</span>
-        </div>
-      </div>
     </div>
   </div>
 
   <div class="settings-panel" id="trialModal">
     <div class="settings-window" style="max-width:400px;">
       <div class="settings-head">
-        <h3 id="trialModalTitle">Пробный период</h3>
+        <h3 id="trialModalTitle">NYVEX Pro</h3>
         <button type="button" class="icon-btn" id="trialModalClose" aria-label="Закрыть">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
         </button>
       </div>
       <div class="settings-body">
-        <p id="trialModalText" style="color:var(--dim);font-size:14px;line-height:1.55;margin-bottom:16px;">Оформите подписку.</p>
-        <button type="button" class="btn btn-primary" id="trialModalPay" style="width:100%;margin-bottom:8px;">Оформить — 290 ₽/мес</button>
+        <p id="trialModalText" style="color:var(--dim);font-size:14px;line-height:1.55;margin-bottom:16px;">Пробный период 7 дней. Далее 290 ₽ за 30 дней доступа на этом устройстве.</p>
+        <button type="button" class="btn btn-primary" id="trialModalPay" style="width:100%;margin-bottom:8px;">Оплатить 290 ₽ / 30 дней</button>
         <button type="button" class="btn btn-ghost" id="trialModalLater" style="width:100%;">Позже</button>
       </div>
     </div>

@@ -1,49 +1,70 @@
 /**
- * NYVEX — core/trial.js
- * 7-day trial + subscription gate
+ * NYVEX — trial 7d + paid 30d, device-bound
  */
-import { TRIAL_DAYS, PRICE_RUB } from './config.js';
-import { storage } from './storage.js';
-import { toast } from './toast.js';
+import { getDeviceId } from './device.js';
+import { PRICE_RUB } from './config.js';
 import { $ } from './utils.js';
+import { toast } from './toast.js';
 
-export function ensureTrialOnUser(user) {
-  if (!user) return user;
-  const now = Date.now();
-  if (!user.trialStart) {
-    user.trialStart = now;
-    user.trialEnd = now + TRIAL_DAYS * 24 * 60 * 60 * 1000;
+export const TRIAL_MS = 7 * 24 * 60 * 60 * 1000;
+export const PAID_MS = 30 * 24 * 60 * 60 * 1000;
+
+function saveTrialState(state) {
+  try {
+    localStorage.setItem('nyvex_trial_state', JSON.stringify(state));
+  } catch (e) {
+    console.error('saveTrialState', e);
   }
-  if (!user.plan) user.plan = 'trial';
-  if (user.plan === 'pro' || user.plan === 'paid') {
-    user.plan = 'pro';
-  }
-  return user;
 }
 
-export function getTrialInfo() {
-  const u = storage.getUser();
-  if (!u) return { active: false, expired: true, remainingMs: 0, daysLeft: 0, plan: 'none' };
-  const user = ensureTrialOnUser({ ...u });
-  if (user.plan === 'pro') {
-    return { active: true, expired: false, remainingMs: Infinity, daysLeft: 999, plan: 'pro' };
+export async function getTrialState() {
+  const deviceId = await getDeviceId();
+  let state = null;
+  try {
+    state = JSON.parse(localStorage.getItem('nyvex_trial_state') || 'null');
+  } catch {
+    state = null;
   }
-  const end = user.trialEnd || Date.now();
-  const remainingMs = Math.max(0, end - Date.now());
-  const daysLeft = remainingMs / (24 * 60 * 60 * 1000);
-  return {
-    active: remainingMs > 0,
-    expired: remainingMs <= 0,
-    remainingMs,
-    daysLeft,
-    plan: 'trial',
-    trialEnd: end,
-  };
+
+  if (!state || state.deviceId !== deviceId) {
+    state = {
+      deviceId,
+      startedAt: Date.now(),
+      expiresAt: Date.now() + TRIAL_MS,
+      plan: 'trial',
+      paidUntil: null,
+      paidAt: null,
+      payments: [],
+    };
+    saveTrialState(state);
+  }
+
+  const now = Date.now();
+  if (state.plan === 'trial' && now >= state.expiresAt) {
+    state.plan = 'expired';
+    saveTrialState(state);
+  }
+  if (state.plan === 'paid' && state.paidUntil && now >= state.paidUntil) {
+    state.plan = 'expired';
+    saveTrialState(state);
+  }
+  return state;
+}
+
+export function getTimeLeft(state) {
+  if (!state) return 0;
+  if (state.plan === 'trial') return Math.max(0, state.expiresAt - Date.now());
+  if (state.plan === 'paid' && state.paidUntil) return Math.max(0, state.paidUntil - Date.now());
+  return 0;
+}
+
+export function canSendMessage(state) {
+  if (!state || state.plan === 'expired') return false;
+  return getTimeLeft(state) > 0;
 }
 
 export function formatRemaining(ms) {
-  if (!isFinite(ms)) return 'Pro';
-  if (ms <= 0) return '0 дн';
+  if (!ms || ms <= 0) return '0 сек';
   const s = Math.floor(ms / 1000);
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
@@ -51,110 +72,186 @@ export function formatRemaining(ms) {
   const sec = s % 60;
   if (d > 0) return `${d} дн ${h} ч ${m} мин ${sec} сек`;
   if (h > 0) return `${h} ч ${m} мин ${sec} сек`;
-  return `${m} мин ${sec} сек`;
+  if (m > 0) return `${m} мин ${sec} сек`;
+  return `${sec} сек`;
 }
 
-export function canSendMessages() {
-  const info = getTrialInfo();
-  return info.plan === 'pro' || info.active;
+export function formatBadge(state) {
+  const ms = getTimeLeft(state);
+  if (state.plan === 'expired' || ms <= 0) return { text: 'Оплатить', cls: 'danger', title: 'Подписка истекла' };
+  const days = ms / 86400000;
+  if (state.plan === 'paid') {
+    if (days < 1) return { text: 'Pro · ' + Math.ceil(ms / 3600000) + ' ч', cls: 'danger', title: formatRemaining(ms) };
+    return { text: 'Pro · ' + Math.ceil(days) + ' дн', cls: 'pro', title: formatRemaining(ms) };
+  }
+  // trial
+  if (days < 1) return { text: Math.ceil(ms / 3600000) + ' ч', cls: 'danger', title: formatRemaining(ms) };
+  if (days < 3) return { text: Math.ceil(days) + ' дн', cls: 'warn', title: formatRemaining(ms) };
+  return { text: Math.ceil(days) + ' дн', cls: '', title: formatRemaining(ms) };
 }
 
-let trialTimer = null;
+/** Demo / after YooKassa success */
+export function activatePaidSubscription(state) {
+  const s = state || {};
+  s.plan = 'paid';
+  s.paidAt = Date.now();
+  s.paidUntil = Date.now() + PAID_MS;
+  if (!Array.isArray(s.payments)) s.payments = [];
+  s.payments.push({ amount: PRICE_RUB, paidAt: s.paidAt, expiresAt: s.paidUntil });
+  saveTrialState(s);
+  return s;
+}
+
+export function cancelPaidSubscription(state) {
+  const s = state || {};
+  // keep access until paidUntil, but mark no auto-renew conceptually
+  s.autoRenew = false;
+  saveTrialState(s);
+  return s;
+}
+
+let badgeTimer = null;
+let cachedState = null;
+
+export async function refreshTrialCache() {
+  cachedState = await getTrialState();
+  return cachedState;
+}
+
+export function getCachedState() {
+  return cachedState;
+}
 
 export function startTrialBadge() {
   stopTrialBadge();
-  updateTrialBadge();
-  trialTimer = setInterval(updateTrialBadge, 1000);
+  const tick = async () => {
+    try {
+      cachedState = await getTrialState();
+      updateTrialBadge(cachedState);
+      updateComposerLock(cachedState);
+      refreshSubUI(cachedState);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+  tick();
+  badgeTimer = setInterval(tick, 1000);
 }
 
 export function stopTrialBadge() {
-  if (trialTimer) {
-    clearInterval(trialTimer);
-    trialTimer = null;
+  if (badgeTimer) {
+    clearInterval(badgeTimer);
+    badgeTimer = null;
   }
 }
 
-export function updateTrialBadge() {
+export function updateTrialBadge(state) {
   const badge = $('trialBadge');
-  const info = getTrialInfo();
-  if (!badge) return;
-
-  if (info.plan === 'pro') {
-    badge.textContent = 'Pro';
-    badge.classList.remove('warn', 'danger');
-    badge.classList.add('pro');
-    badge.title = 'Подписка активна';
-    return;
-  }
-
-  if (info.expired) {
-    badge.textContent = 'Истёк';
-    badge.classList.add('danger');
-    badge.classList.remove('warn', 'pro');
-    badge.title = 'Пробный период закончился';
-    return;
-  }
-
-  const d = Math.ceil(info.daysLeft);
-  badge.textContent = d <= 1 ? '1 день' : `${d} дн`;
-  badge.title = 'Осталось: ' + formatRemaining(info.remainingMs);
-  badge.classList.toggle('warn', info.daysLeft < 3);
-  badge.classList.toggle('danger', info.daysLeft < 1);
-  badge.classList.remove('pro');
+  if (!badge || !state) return;
+  const b = formatBadge(state);
+  badge.textContent = b.text;
+  badge.classList.remove('warn', 'danger', 'pro');
+  if (b.cls) badge.classList.add(b.cls);
+  badge.title = b.title;
 }
 
-export function checkTrialWarnings() {
-  const info = getTrialInfo();
-  if (info.plan === 'pro' || info.expired) return;
-
-  if (info.daysLeft < 3 && info.daysLeft >= 1) {
-    toast(`Осталось ${Math.ceil(info.daysLeft)} дн. Продлить за ${PRICE_RUB} ₽?`);
+export function updateComposerLock(state) {
+  const input = $('composerInput');
+  const sendBtn = $('sendBtn');
+  const ok = canSendMessage(state);
+  if (input) {
+    input.disabled = !ok;
+    input.placeholder = ok ? 'Напишите сообщение…' : 'Оформите подписку чтобы продолжить';
   }
-  if (info.daysLeft < 1) {
-    const dayKey = new Date().toISOString().slice(0, 10);
-    if (storage.getTrialNoticeDay() !== dayKey) {
-      storage.setTrialNoticeDay(dayKey);
-      showTrialModal('soon');
-    }
+  if (sendBtn) {
+    sendBtn.disabled = !ok;
+    if (!ok) sendBtn.classList.remove('enabled');
   }
 }
 
-export function showTrialModal(kind = 'expired') {
-  const panel = $('trialModal');
-  if (!panel) return;
-  const title = $('trialModalTitle');
-  const text = $('trialModalText');
-  if (kind === 'soon') {
-    if (title) title.textContent = 'Завтра закончится пробный период';
-    if (text)
-      text.textContent = `Оформите подписку за ${PRICE_RUB} ₽/мес, чтобы продолжить общение с NYVEX.`;
-  } else {
-    if (title) title.textContent = 'Пробный период закончился';
-    if (text)
-      text.textContent = `Оформите подписку за ${PRICE_RUB} ₽/мес, чтобы продолжить. Историю можно читать.`;
-  }
-  panel.classList.add('show');
+export function showPaymentModal() {
+  $('trialModal')?.classList.add('show');
 }
 
-export function hideTrialModal() {
+export function hidePaymentModal() {
   $('trialModal')?.classList.remove('show');
 }
 
-export function activatePro() {
-  const u = storage.getUser() || {};
-  u.plan = 'pro';
-  u.subscribedAt = Date.now();
-  storage.setUser(u);
-  hideTrialModal();
-  updateTrialBadge();
-  toast('Подписка Pro активирована (демо)');
+export function refreshSubUI(state) {
+  if (!state) return;
+  const label = $('trialStatusLabel');
+  const bar = $('trialProgress');
+  const endEl = $('trialEndDate');
+  const ms = getTimeLeft(state);
+  if (label) {
+    if (state.plan === 'paid') label.textContent = 'Pro · ' + formatRemaining(ms);
+    else if (state.plan === 'trial') label.textContent = 'Пробный · ' + formatRemaining(ms);
+    else label.textContent = 'Подписка истекла';
+  }
+  if (bar) {
+    const total = state.plan === 'paid' ? PAID_MS : TRIAL_MS;
+    const pct = total ? Math.min(100, (ms / total) * 100) : 0;
+    bar.style.width = (state.plan === 'expired' ? 0 : pct) + '%';
+  }
+  if (endEl) {
+    if (state.plan === 'paid' && state.paidUntil)
+      endEl.textContent = 'До ' + new Date(state.paidUntil).toLocaleString('ru-RU');
+    else if (state.plan === 'trial')
+      endEl.textContent = 'До ' + new Date(state.expiresAt).toLocaleString('ru-RU');
+    else endEl.textContent = 'Нужна оплата';
+  }
+  const hist = $('paymentHistory');
+  if (hist) {
+    const list = state.payments || [];
+    hist.innerHTML = list.length
+      ? list
+          .slice()
+          .reverse()
+          .map(
+            (p) =>
+              `<div class="pay-row">${new Date(p.paidAt).toLocaleDateString('ru-RU')} · ${p.amount} ₽ · до ${new Date(p.expiresAt).toLocaleDateString('ru-RU')}</div>`
+          )
+          .join('')
+      : '<div class="pay-row dim">Пока нет оплат</div>';
+  }
 }
 
-export function cancelPro() {
-  const u = storage.getUser() || {};
-  u.plan = 'trial';
-  // keep trialEnd as-is
-  storage.setUser(u);
-  updateTrialBadge();
-  toast('Подписка отменена');
+/** Legacy aliases used by older imports */
+export function ensureTrialOnUser(u) {
+  return u;
+}
+export function getTrialInfo() {
+  const s = cachedState;
+  if (!s) return { plan: 'trial', active: true, expired: false, remainingMs: TRIAL_MS, daysLeft: 7 };
+  const ms = getTimeLeft(s);
+  return {
+    plan: s.plan === 'paid' ? 'pro' : s.plan,
+    active: canSendMessage(s),
+    expired: s.plan === 'expired',
+    remainingMs: ms,
+    daysLeft: ms / 86400000,
+    trialEnd: s.expiresAt,
+  };
+}
+export function showTrialModal() {
+  showPaymentModal();
+}
+export function hideTrialModal() {
+  hidePaymentModal();
+}
+export async function activatePro() {
+  const s = await getTrialState();
+  activatePaidSubscription(s);
+  cachedState = s;
+  updateTrialBadge(s);
+  updateComposerLock(s);
+  refreshSubUI(s);
+  hidePaymentModal();
+  toast('Подписка на 30 дней активирована');
+}
+export async function cancelPro() {
+  const s = await getTrialState();
+  cancelPaidSubscription(s);
+  toast('Автопродление отключено (доступ до конца оплаченного периода)');
+  refreshSubUI(s);
 }

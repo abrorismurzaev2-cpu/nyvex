@@ -7,9 +7,10 @@ import { getCurrentChat, addMessageToCurrent } from './history.js';
 import { appendMessage, showTyping, removeTyping } from './messages.js';
 import { generateReply } from '../ai/chat.js';
 import {
-  canSendMessages,
-  showTrialModal,
-  checkTrialWarnings,
+  canSendMessage,
+  showPaymentModal,
+  getCachedState,
+  refreshTrialCache,
 } from '../core/trial.js';
 
 let isGenerating = false;
@@ -30,6 +31,11 @@ export function initControls() {
       e.preventDefault();
       if (sendBtn?.classList.contains('enabled') && !isGenerating) sendMessage();
     }
+  });
+
+  composerInput?.addEventListener('click', async () => {
+    const state = getCachedState() || (await refreshTrialCache());
+    if (!canSendMessage(state)) showPaymentModal();
   });
 
   sendBtn?.addEventListener('click', () => {
@@ -56,21 +62,22 @@ function updateSendBtn() {
   const sendBtn = $('sendBtn');
   const composerInput = $('composerInput');
   if (!sendBtn || !composerInput) return;
-  const ok = composerInput.value.trim().length > 0 && !isGenerating;
+  const state = getCachedState();
+  const allowed = !state || canSendMessage(state);
+  const ok = allowed && composerInput.value.trim().length > 0 && !isGenerating;
   sendBtn.classList.toggle('enabled', ok);
-  sendBtn.disabled = isGenerating;
+  sendBtn.disabled = isGenerating || !allowed;
 }
 
 async function sendMessage() {
   if (isGenerating) return;
 
-  if (!canSendMessages()) {
-    showTrialModal('expired');
-    toast('Пробный период закончился');
+  const state = getCachedState() || (await refreshTrialCache());
+  if (!canSendMessage(state)) {
+    showPaymentModal();
+    toast('Оформите подписку чтобы продолжить');
     return;
   }
-
-  checkTrialWarnings();
 
   const input = $('composerInput');
   const text = input?.value?.trim();
@@ -120,34 +127,13 @@ function onMsgAction(e) {
 
   if (act === 'copy') {
     if (navigator.clipboard?.writeText) {
-      navigator.clipboard
-        .writeText(text)
-        .then(() => {
-          btn.classList.add('active');
-          toast('Скопировано');
-          setTimeout(() => btn.classList.remove('active'), 900);
-        })
-        .catch(() => toast('Ошибка копирования'));
-    } else {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text;
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-        toast('Скопировано');
-      } catch {
-        toast('Ошибка');
-      }
+      navigator.clipboard.writeText(text).then(() => toast('Скопировано')).catch(() => toast('Ошибка'));
     }
   } else if (act === 'like') {
     msg.querySelector('[data-act="dislike"]')?.classList.remove('active');
     btn.classList.toggle('active');
-    toast(btn.classList.contains('active') ? 'Спасибо!' : 'Снято');
   } else if (act === 'dislike') {
     msg.querySelector('[data-act="like"]')?.classList.remove('active');
     btn.classList.toggle('active');
-    toast(btn.classList.contains('active') ? 'Учтём!' : 'Снято');
   }
 }

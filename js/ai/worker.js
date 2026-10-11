@@ -9,7 +9,7 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+let MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 
 let generator = null;
 let device = 'wasm';

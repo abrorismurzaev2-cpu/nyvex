@@ -2,10 +2,9 @@
  * NYVEX — ai/loader.js
  * Web Worker + fallback, model status, model switch
  */
-import { MODEL, CDN, MODELS, DEFAULT_MODEL_ID, STORAGE_KEYS } from '../core/config.js';
+import { MODEL, CDN, MODEL_ID } from '../core/config.js';
 import { isMobile, $ } from '../core/utils.js';
 import { toast } from '../core/toast.js';
-import { storage } from '../core/storage.js';
 
 let worker = null;
 let modelReady = false;
@@ -20,15 +19,7 @@ let reqSeq = 0;
 let loadPct = 0;
 let statusListeners = [];
 
-function getPrefModelId() {
-  try {
-    const pref = storage.getModelPref();
-    if (pref?.id) return pref.id;
-  } catch {}
-  return DEFAULT_MODEL_ID;
-}
-
-let activeModelId = getPrefModelId();
+let activeModelId = MODEL_ID;
 
 export function getActiveModelId() {
   return activeModelId;
@@ -52,9 +43,9 @@ export function getLoadPct() {
 
 export function getModelStatus() {
   if (loadError && !modelReady) return { state: 'error', label: 'Ошибка', pct: loadPct, device: modelDevice };
-  if (modelReady) return { state: 'ready', label: 'Загружена · ' + modelDevice, pct: 100, device: modelDevice };
-  if (loading) return { state: 'loading', label: 'Загрузка · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice };
-  return { state: 'idle', label: 'Не загружена', pct: 0, device: modelDevice };
+  if (modelReady) return { state: 'ready', label: 'AI готов к работе ✓', pct: 100, device: modelDevice };
+  if (loading) return { state: 'loading', label: 'Загрузка AI · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice };
+  return { state: 'idle', label: 'AI не загружен', pct: 0, device: modelDevice };
 }
 
 export function onModelStatus(fn) {
@@ -87,14 +78,11 @@ function emitStatus() {
     const desc = $('modelInfoDesc');
     if (desc) desc.textContent = st.label;
     const miStatus = $('miStatus');
-    if (miStatus) miStatus.textContent = st.state === 'ready' ? 'Загружена' : st.state === 'error' ? 'Ошибка' : st.state === 'loading' ? 'Загрузка' : 'Не загружена';
+    if (miStatus) miStatus.textContent = st.state === 'ready' ? 'AI готов' : st.state === 'error' ? 'Ошибка' : st.state === 'loading' ? 'Загрузка AI' : 'AI не загружен';
     const miDevice = $('miDevice');
     if (miDevice) miDevice.textContent = modelDevice;
     const modelName = $('modelName');
-    if (modelName) {
-      const m = MODELS.find((x) => x.id === activeModelId);
-      modelName.textContent = m?.name || 'Qwen2.5-0.5B';
-    }
+    if (modelName) modelName.textContent = 'AI';
   } catch (e) {
     console.error('emitStatus UI', e);
   }
@@ -139,7 +127,7 @@ function updateUI(payload) {
   }
 
   if (payload.status === 'progress') {
-    const total = payload.total || 350 * 1024 * 1024;
+    const total = payload.total || 900 * 1024 * 1024;
     const loaded = payload.loaded || 0;
     const pct = payload.pct != null ? payload.pct : total ? (loaded / total) * 100 : 0;
     loadPct = Math.min(99, pct);
@@ -155,7 +143,7 @@ function updateUI(payload) {
     }
     if (warn && payload.speed > 0 && payload.speed < 100 * 1024) {
       warn.style.display = 'block';
-      warn.textContent = '⚠️ Медленная сеть. Первый запуск ~350 МБ — лучше на Wi‑Fi.';
+      warn.textContent = '⚠️ Медленная сеть. Первый запуск ~900 МБ — лучше на Wi‑Fi.';
     }
     emitStatus();
     return;
@@ -235,13 +223,8 @@ export function cancelLoad() {
 
 export async function loadModel(modelId) {
   if (loading) return modelReady;
-  if (modelReady && (!modelId || modelId === activeModelId)) return true;
-
-  if (modelId && modelId !== activeModelId) {
-    await unloadModel();
-    activeModelId = modelId;
-    storage.setModelPref({ id: modelId, at: Date.now() });
-  }
+  if (modelReady) return true;
+  activeModelId = MODEL_ID;
 
   loading = true;
   cancelled = false;
