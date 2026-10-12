@@ -68,3 +68,20 @@ export const LIMITS = {
 };
 
 export const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9.5" ry="4.2" transform="rotate(-28 12 12)"/><path d="M12 2.5 L12 21.5"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>`;
+
+
+/** Backend API (Vercel). Override: localStorage nyvex_api_base */
+export function getApiBase() {
+  try {
+    const custom = localStorage.getItem('nyvex_api_base');
+    if (custom) return custom.replace(/\/$/, '');
+  } catch {}
+  if (typeof window === 'undefined') return '';
+  const host = window.location.hostname || '';
+  // GitHub Pages / local → production API host (set APP_URL on Vercel to match frontend return)
+  if (host.includes('github.io') || host === 'localhost' || host === '127.0.0.1') {
+    return 'https://nyvex.vercel.app';
+  }
+  // Same origin when app is served from Vercel
+  return '';
+}

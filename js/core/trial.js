@@ -240,14 +240,30 @@ export function hideTrialModal() {
   hidePaymentModal();
 }
 export async function activatePro() {
+  // Real YooKassa checkout (no local demo activation)
+  try {
+    const { startPayment } = await import('../payment/checkout.js');
+    await startPayment();
+  } catch (e) {
+    console.error(e);
+    toast('Не удалось открыть оплату');
+  }
+}
+
+/** Apply server-side subscription (after webhook / check) */
+export async function applyServerSubscription(expiresAt, paidAt) {
   const s = await getTrialState();
-  activatePaidSubscription(s);
+  s.plan = 'paid';
+  s.paidAt = paidAt || Date.now();
+  s.paidUntil = expiresAt || Date.now() + PAID_MS;
+  if (!Array.isArray(s.payments)) s.payments = [];
+  s.payments.push({ amount: PRICE_RUB, paidAt: s.paidAt, expiresAt: s.paidUntil });
+  saveTrialState(s);
   cachedState = s;
   updateTrialBadge(s);
   updateComposerLock(s);
   refreshSubUI(s);
-  hidePaymentModal();
-  toast('Подписка на 30 дней активирована');
+  return s;
 }
 export async function cancelPro() {
   const s = await getTrialState();

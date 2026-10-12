@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0a0a0f">
+  <title>NYVEX — оплата</title>
+  <link rel="stylesheet" href="css/base.css">
+  <style>
+    body { background:#0a0a0f; color:#ececf1; font-family:system-ui,sans-serif; display:flex; min-height:100vh; align-items:center; justify-content:center; padding:24px; text-align:center; }
+    .card { max-width:360px; }
+    h1 { font-size:1.25rem; margin-bottom:12px; }
+    p { color:#9a9aab; font-size:14px; line-height:1.5; margin-bottom:20px; }
+    a.btn { display:inline-block; padding:12px 20px; border-radius:12px; background:linear-gradient(135deg,#7c5cff,#00d9ff); color:#0a0a0f; text-decoration:none; font-weight:600; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title">Проверяем оплату…</h1>
+    <p id="msg">Подождите несколько секунд.</p>
+    <a class="btn" href="./app.html">Открыть чат</a>
+  </div>
+  <script type="module">
+    import { getDeviceId } from './js/core/device.js';
+    import { getApiBase } from './js/core/config.js';
+    import { activatePaidSubscription, getTrialState } from './js/core/trial.js';
+
+    const params = new URLSearchParams(location.search);
+    let deviceId = params.get('deviceId');
+    const paymentId = params.get('paymentId') || sessionStorage.getItem('nyvex_last_payment_id') || '';
+
+    async function run() {
+      try {
+        if (!deviceId) deviceId = await getDeviceId();
+        const base = getApiBase();
+        const q = new URLSearchParams({ deviceId });
+        if (paymentId) q.set('paymentId', paymentId);
+        const res = await fetch(`${base}/api/check-subscription?${q}`);
+        const data = await res.json();
+        if (data.active) {
+          const s = await getTrialState();
+          activatePaidSubscription(s);
+          s.paidUntil = data.expiresAt || s.paidUntil;
+          localStorage.setItem('nyvex_trial_state', JSON.stringify(s));
+          document.getElementById('title').textContent = 'Оплата прошла';
+          document.getElementById('msg').textContent = 'Подписка на 30 дней активирована. Можно открыть чат.';
+        } else {
+          document.getElementById('title').textContent = 'Оплата обрабатывается';
+          document.getElementById('msg').textContent = 'Если деньги списались, обновите страницу через минуту или откройте чат — статус подтянется.';
+        }
+      } catch (e) {
+        document.getElementById('title').textContent = 'Не удалось проверить';
+        document.getElementById('msg').textContent = 'Откройте чат — статус обновится автоматически.';
+      }
+    }
+    run();
+  </script>
+</body>
+</html>

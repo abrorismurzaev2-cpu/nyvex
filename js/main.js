@@ -75,6 +75,14 @@ async function boot() {
     // Device ID + trial start
     await getDeviceId();
     await refreshTrialCache();
+    // Pull paid status from server (YooKassa webhook / check)
+    try {
+      const { syncSubscriptionFromServer } = await import('./payment/checkout.js');
+      const pid = sessionStorage.getItem('nyvex_last_payment_id');
+      await syncSubscriptionFromServer(pid || undefined);
+    } catch (e) {
+      console.warn('sub sync', e);
+    }
 
     // Model must load on splash (or resume from cache)
     showScreen('loading');
