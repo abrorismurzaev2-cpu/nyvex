@@ -14,15 +14,18 @@ import {
 } from './download-notify.js';
 import {
   hasModelInCache,
+  getModelState,
   requestPersistentStorage,
   isLikelyIncognito,
   checkFreeSpace,
   formatBytes as fmtCacheBytes,
   getModelCacheSize,
   clearModelCache,
+  markModelReady,
+  isStoragePersisted,
 } from './model-cache.js';
 
-export { getModelCacheSize, clearModelCache, hasModelInCache };
+export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted };
 
 let worker = null;
 let modelReady = false;
@@ -167,7 +170,7 @@ function updateUI(payload) {
       live.style.opacity = '1';
     }
     saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
-    try { localStorage.setItem('nyvex_model_ready_v1', '1'); } catch {}
+    try { markModelReady(loadTotal || 900*1024*1024); } catch {}
     try { notifyDownloadDone(); } catch {}
     try {
       const hw = document.getElementById('headerLoadWrap');
@@ -260,7 +263,7 @@ function ensureWorker() {
       } else if (msg.type === 'loaded') {
         modelReady = true;
         loading = false;
-        try { localStorage.setItem('nyvex_model_ready_v1', '1'); } catch {}
+        try { markModelReady(loadTotal || 900*1024*1024); } catch {}
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
         loadPct = 100;
         updateUI({ status: 'done' });

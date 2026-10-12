@@ -5,7 +5,7 @@
 import { initRouter, showScreen } from './core/router.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
-import { loadModel, cancelLoad, isModelReady, isLoading } from './ai/loader.js';
+import { loadModel, cancelLoad, isModelReady, isLoading, getModelState } from './ai/loader.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
 import { initSidebar } from './ui/sidebar.js';
@@ -92,23 +92,45 @@ async function boot() {
       console.warn('sub sync', e);
     }
 
-    // Model must load on splash (or resume from cache)
+    // Model splash: full progress only on first download
     showScreen('loading');
+    let modelState = 'not-downloaded';
     try {
-      if (localStorage.getItem('nyvex_model_ready_v1') === '1') {
-        const live = document.getElementById('loadLiveMeta');
-        if (live) {
-          live.textContent = 'Загрузка из кэша…';
-          live.style.opacity = '1';
-        }
-      }
+      modelState = await getModelState();
     } catch {}
+    const isCached = modelState === 'cached';
+    console.log('[nyvex] modelState', modelState);
+
+    // UI mode
+    const progressEls = [
+      'loadLiveMeta', 'loadMb', 'loadSpeed', 'loadEta', 'loadStatus', 'loadDetail', 'loadWarn',
+    ];
+    const cancelBtn = document.getElementById('cancelLoadBtn');
+    const retryBtn = document.getElementById('retryLoadBtn');
+    if (isCached) {
+      // Logo-only quick splash
+      progressEls.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      if (cancelBtn) cancelBtn.style.display = 'none';
+      if (retryBtn) retryBtn.style.display = 'none';
+      const bar = document.querySelector('#screen-loading .sub-progress, #screen-loading .load-bar, .splash-progress');
+      if (bar) bar.style.display = 'none';
+    } else {
+      progressEls.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
+      if (cancelBtn) {
+        cancelBtn.style.display = '';
+        cancelBtn.textContent = 'Свернуть';
+      }
+    }
 
     let minimized = false;
-    const minimizeBtn = document.getElementById('cancelLoadBtn');
-    if (minimizeBtn) {
-      minimizeBtn.textContent = 'Свернуть';
-      minimizeBtn.onclick = () => {
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
         minimized = true;
         enterApp();
         toast('Загрузка AI продолжается в фоне');
@@ -117,9 +139,8 @@ async function boot() {
       };
     }
 
-    document.getElementById('retryLoadBtn')?.addEventListener('click', async () => {
-      const btn = document.getElementById('retryLoadBtn');
-      if (btn) btn.style.display = 'none';
+    retryBtn?.addEventListener('click', async () => {
+      if (retryBtn) retryBtn.style.display = 'none';
       minimized = false;
       showScreen('loading');
       try {
@@ -127,37 +148,43 @@ async function boot() {
         if (isModelReady()) enterApp();
       } catch (e) {
         console.error(e);
-        if (btn) btn.style.display = '';
+        if (retryBtn) retryBtn.style.display = '';
       }
     });
 
+    const t0 = Date.now();
     const loadPromise = loadModel().catch((e) => {
       console.error('loadModel', e);
-      toast('Ошибка загрузки AI. Проверьте интернет.');
-      const retry = document.getElementById('retryLoadBtn');
-      if (retry) retry.style.display = '';
+      toast('Не удалось загрузить AI. Проверьте интернет или VPN.');
+      if (retryBtn) retryBtn.style.display = '';
+      // show meta again on error
+      progressEls.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = '';
+      });
       return false;
     });
 
-    // Stay on loading screen until ready (unless user minimized)
-    loadPromise.then((ok) => {
-      if (isModelReady()) {
-        if (!minimized) {
-          enterApp();
-          try {
-            $('composerInput')?.focus();
-          } catch {}
-        } else {
-          toast('AI готов к работе');
-          const hw = document.getElementById('headerLoadWrap');
-          if (hw) hw.style.display = 'none';
-        }
-        try {
-          const status = document.querySelector('.welcome-status span:last-child');
-          if (status) status.textContent = 'AI готов';
-          document.querySelector('.welcome-status')?.classList.remove('loading');
-        } catch {}
+    loadPromise.then(async (ok) => {
+      if (!isModelReady()) return;
+      // Cached path: ensure minimum logo time ~600ms
+      if (isCached) {
+        const wait = Math.max(0, 600 - (Date.now() - t0));
+        if (wait) await new Promise((r) => setTimeout(r, wait));
       }
+      if (!minimized) {
+        enterApp();
+        try { $('composerInput')?.focus(); } catch {}
+      } else {
+        toast('AI готов к работе');
+        const hw = document.getElementById('headerLoadWrap');
+        if (hw) hw.style.display = 'none';
+      }
+      try {
+        const status = document.querySelector('.welcome-status span:last-child');
+        if (status) status.textContent = 'AI готов';
+        document.querySelector('.welcome-status')?.classList.remove('loading');
+      } catch {}
     });
   } catch (e) {
     console.error('boot', e);
