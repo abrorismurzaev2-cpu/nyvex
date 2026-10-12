@@ -167,6 +167,7 @@ function updateUI(payload) {
       live.style.opacity = '1';
     }
     saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
+    try { localStorage.setItem('nyvex_model_ready_v1', '1'); } catch {}
     try { notifyDownloadDone(); } catch {}
     try {
       const hw = document.getElementById('headerLoadWrap');
@@ -259,6 +260,7 @@ function ensureWorker() {
       } else if (msg.type === 'loaded') {
         modelReady = true;
         loading = false;
+        try { localStorage.setItem('nyvex_model_ready_v1', '1'); } catch {}
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
         loadPct = 100;
         updateUI({ status: 'done' });

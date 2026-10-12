@@ -94,6 +94,15 @@ async function boot() {
 
     // Model must load on splash (or resume from cache)
     showScreen('loading');
+    try {
+      if (localStorage.getItem('nyvex_model_ready_v1') === '1') {
+        const live = document.getElementById('loadLiveMeta');
+        if (live) {
+          live.textContent = 'Загрузка из кэша…';
+          live.style.opacity = '1';
+        }
+      }
+    } catch {}
 
     let minimized = false;
     const minimizeBtn = document.getElementById('cancelLoadBtn');

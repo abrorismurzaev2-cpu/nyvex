@@ -74,14 +74,8 @@ export const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentCol
 export function getApiBase() {
   try {
     const custom = localStorage.getItem('nyvex_api_base');
-    if (custom) return custom.replace(/\/$/, '');
+    if (custom) return String(custom).replace(/\/$/, '');
   } catch {}
-  if (typeof window === 'undefined') return '';
-  const host = window.location.hostname || '';
-  // GitHub Pages / local → production API host (set APP_URL on Vercel to match frontend return)
-  if (host.includes('github.io') || host === 'localhost' || host === '127.0.0.1') {
-    return 'https://nyvex-xi.vercel.app';
-  }
-  // Same origin when app is served from Vercel
-  return '';
+  // Always use production API for GitHub Pages + Capacitor APK (localhost / capacitor)
+  return 'https://nyvex-xi.vercel.app';
 }
