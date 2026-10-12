@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",
-    "@capacitor/core": "^6.2.0",
+    "@capacitor/core": "^8.5.3",
     "@vercel/kv": "^2.0.0"
   },
   "devDependencies": {
