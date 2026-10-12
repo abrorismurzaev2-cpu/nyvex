@@ -1,5 +1,6 @@
 /**
  * NYVEX — ai/worker.js
+ * Load + generate off main thread
  */
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
 
@@ -15,30 +16,25 @@ function post(msg) {
   self.postMessage(msg);
 }
 
-async function loadPipeline(preferGpu, dtype) {
+async function loadPipeline(preferGpu) {
   const order = preferGpu ? ['webgpu', 'wasm'] : ['wasm'];
   let lastErr = null;
   for (const dev of order) {
-    for (const dt of dtype ? [dtype] : ['q4', 'q8']) {
+    for (const dt of ['q4', 'q8']) {
       try {
-        post({
-          type: 'progress',
-          status: 'init',
-          message: 'Подключение · ' + dev,
-        });
+        post({ type: 'progress', status: 'init', message: 'Подключение…' });
         console.log('[nyvex-worker] load', MODEL_ID, dev, dt);
         device = dev;
         const progressMap = {};
         let lastTs = Date.now();
         let lastLoaded = 0;
+
         generator = await pipeline('text-generation', MODEL_ID, {
           device: dev,
           dtype: dt,
           progress_callback: (p) => {
             try {
-              if (p.file) {
-                console.log('[nyvex-worker]', p.status, p.file, p.loaded, p.total);
-              }
+              if (p.file) console.log('[nyvex-worker]', p.status, p.file, p.loaded, p.total);
               if (p.status === 'progress' && p.file) {
                 progressMap[p.file] = { loaded: p.loaded || 0, total: p.total || 0 };
                 let total = 0;
@@ -47,10 +43,9 @@ async function loadPipeline(preferGpu, dtype) {
                   total += progressMap[k].total || 0;
                   loaded += progressMap[k].loaded || 0;
                 }
-                // estimate if totals missing
                 if (!total) total = 900 * 1024 * 1024;
                 const now = Date.now();
-                const dtSec = Math.max(0.2, (now - lastTs) / 1000);
+                const dtSec = Math.max(0.25, (now - lastTs) / 1000);
                 const speed = Math.max(0, (loaded - lastLoaded) / dtSec);
                 lastTs = now;
                 lastLoaded = loaded;
@@ -64,18 +59,18 @@ async function loadPipeline(preferGpu, dtype) {
                   pct,
                   speed,
                   eta: remaining,
-                  file: p.file,
+                  file: String(p.file || '').split('/').pop(),
                 });
               } else if (p.status === 'ready') {
                 post({ type: 'progress', status: 'ready', message: 'Инициализация…', pct: 99 });
+              } else if (p.status === 'done') {
+                post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
               } else if (p.status === 'initiate' || p.status === 'download') {
                 post({
                   type: 'progress',
                   status: 'init',
-                  message: p.file ? 'Файл: ' + String(p.file).split('/').pop() : 'Скачивание…',
+                  message: p.file ? String(p.file).split('/').pop() : 'Скачивание…',
                 });
-              } else if (p.status === 'done') {
-                post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
               }
             } catch (e) {
               console.error('[nyvex-worker] progress', e);
@@ -89,7 +84,7 @@ async function loadPipeline(preferGpu, dtype) {
         post({
           type: 'progress',
           status: 'init',
-          message: 'Повтор · ' + String(err?.message || err).slice(0, 80),
+          message: 'Повтор…',
         });
         generator = null;
       }
@@ -104,7 +99,7 @@ self.onmessage = async (e) => {
   try {
     if (type === 'load') {
       if (data.modelId) MODEL_ID = data.modelId;
-      await loadPipeline(!!data.preferGpu, data.dtype || null);
+      await loadPipeline(!!data.preferGpu);
       ready = true;
       post({ type: 'loaded', device, id });
       return;
@@ -117,9 +112,10 @@ self.onmessage = async (e) => {
       const messages = Array.isArray(data.messages) ? data.messages : [];
       const opts = data.options || {};
       const output = await generator(messages, {
-        max_new_tokens: opts.max_new_tokens || 200,
-        temperature: opts.temperature ?? 0.6,
+        max_new_tokens: opts.max_new_tokens || 150,
+        temperature: opts.temperature ?? 0.5,
         top_p: opts.top_p ?? 0.85,
+        top_k: opts.top_k ?? 40,
         do_sample: true,
         repetition_penalty: opts.repetition_penalty ?? 1.05,
       });

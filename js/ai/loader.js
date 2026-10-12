@@ -111,9 +111,14 @@ function formatSpeed(bps) {
 function formatEta(sec) {
   if (!sec || !isFinite(sec) || sec < 0) return '—';
   if (sec < 60) return '~' + Math.ceil(sec) + ' сек';
-  const m = Math.floor(sec / 60);
-  const s = Math.ceil(sec % 60);
-  return '~' + m + ' мин ' + s + ' сек';
+  if (sec < 3600) {
+    const m = Math.floor(sec / 60);
+    const s = Math.ceil(sec % 60);
+    return '~' + m + ' мин ' + s + ' сек';
+  }
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  return '~' + h + ' ч ' + m + ' мин';
 }
 
 function updateUI(payload) {
@@ -134,6 +139,11 @@ function updateUI(payload) {
     if (det) det.textContent = 'Модель · ' + modelDevice;
     if (fill) fill.style.width = '100%';
     if (pc) pc.textContent = '100%';
+    const live = document.getElementById('loadLiveMeta');
+    if (live) {
+      live.textContent = payload.status === 'from_cache' ? 'Загружено из кэша · мгновенно' : 'AI готов';
+      live.style.opacity = '1';
+    }
     emitStatus();
     return;
   }
@@ -156,6 +166,18 @@ function updateUI(payload) {
     if (mbEl) mbEl.textContent = formatBytes(loaded) + ' / ' + formatBytes(total);
     if (speedEl) speedEl.textContent = formatSpeed(payload.speed);
     if (etaEl) etaEl.textContent = 'ETA ' + formatEta(payload.eta);
+    const live = document.getElementById('loadLiveMeta');
+    if (live) {
+      const parts = [
+        'Загрузка AI · ' + Math.round(loadPct) + '%',
+        formatBytes(loaded) + ' / ' + formatBytes(total),
+      ];
+      if (payload.speed) parts.push(formatSpeed(payload.speed));
+      if (payload.eta) parts.push(formatEta(payload.eta));
+      if (payload.file) parts.push(String(payload.file).slice(0, 24));
+      live.textContent = parts.join(' · ');
+      live.style.opacity = '1';
+    }
     if (det) {
       const slow = payload.speed > 0 && payload.speed < 200 * 1024;
       det.textContent = slow ? 'Медленное соединение. Рекомендуем Wi‑Fi' : 'Ускорение: ' + modelDevice;
@@ -276,6 +298,20 @@ export async function loadModel(modelId) {
   if (loading) return modelReady;
   if (modelReady) return true;
   activeModelId = MODEL_ID;
+
+  try {
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const et = conn && conn.effectiveType;
+    if (et === '2g' || et === 'slow-2g') {
+      const ok = window.confirm(
+        'Медленное соединение. Первый запуск AI ~900 МБ — рекомендуем Wi‑Fi.\n\nПродолжить загрузку?'
+      );
+      if (!ok) {
+        emitStatus();
+        return false;
+      }
+    }
+  } catch {}
 
   loading = true;
   cancelled = false;

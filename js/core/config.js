@@ -2,7 +2,7 @@
  * NYVEX — core/config.js
  */
 export const APP_NAME = 'NYVEX';
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 export const PRICE_RUB = 290;
 export const TRIAL_DAYS = 7;
 export const PAID_DAYS = 30;
@@ -13,6 +13,7 @@ export const STORAGE_KEYS = {
   COOKIE_CONSENT: 'nyvex_cookie_consent',
   DEVICE_ID: 'nyvex_device_id',
   TRIAL_STATE: 'nyvex_trial_state',
+  MOD_LOG: 'nyvex_moderation_log',
 };
 
 /** Single model — never show name in UI */
@@ -23,23 +24,42 @@ export const MODEL = {
   id: MODEL_ID,
   task: 'text-generation',
   dtype: 'q4',
-  maxNewTokens: 200,
-  temperature: 0.6,
+  maxNewTokens: 150,
+  temperature: 0.5,
   topP: 0.85,
+  topK: 40,
   repetitionPenalty: 1.05,
-  systemPrompt: `Ты NYVEX — дружелюбный русскоязычный AI-ассистент.
-ПРАВИЛА:
-1. Отвечай ВСЕГДА только на русском языке. Даже если вопрос на другом языке — отвечай по-русски.
-2. Будь кратким и по делу.
-3. Не используй сложные термины без пояснений.
-4. Если не знаешь — скажи честно.
-Не отвечай на английском, китайском или других языках. Не смешивай языки.`,
+  systemPrompt: `Ты — вежливый русскоязычный AI-помощник NYVEX.
+
+СТРОГИЕ ПРАВИЛА ЯЗЫКА:
+1. Отвечай ИСКЛЮЧИТЕЛЬНО на русском языке.
+2. Никогда не пиши на английском, китайском или других языках, даже если пользователь пишет на них.
+3. Каждое предложение — на русском. Ответ всегда начинается с русского слова.
+
+ПРАВИЛА ОТВЕТА:
+4. Будь кратким: максимум 3–4 предложения.
+5. Не начинай с «Конечно!», «Разумеется!», «Отличный вопрос!».
+6. Отвечай сразу по делу.
+7. Если не знаешь — скажи «Не знаю».
+
+БЕЗОПАСНОСТЬ:
+8. Не используй мат, грубость, оскорбления.
+9. Не давай советов про оружие, взрывчатку, наркотики, самоповреждение, мошенничество.
+10. Не обсуждай политику, религию, войны и политических деятелей.
+11. На запретные темы вежливо откажись: «Извините, я не могу обсуждать эту тему.»`,
   thinkingSystemAdd: `Сначала кратко рассуждай по-русски в тегах <thinking>...</thinking>, затем ответ в <answer>...</answer>.`,
 };
 
 export const CDN = {
   primary: 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2',
 };
+
+export const HF_MIRRORS = [
+  'https://huggingface.co',
+  'https://hf-mirror.com',
+  'https://cdn-lfs.huggingface.co',
+  'https://cdn-lfs-us-1.huggingface.co',
+];
 
 export const LIMITS = {
   chatTitleMax: 60,

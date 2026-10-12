@@ -86,23 +86,51 @@ export function appendMessage(role, text, animate = true, meta = null) {
   return msg;
 }
 
-export function showTyping() {
+export function showTyping(label) {
+  removeTyping();
   const inner = $('chatInner');
   if (!inner) return null;
   const typing = document.createElement('div');
   typing.className = 'msg ai';
   typing.id = 'typingIndicator';
+  const lbl = label || 'Думает…';
   typing.innerHTML = `
     <div class="msg-av">${LOGO_SVG}</div>
     <div class="msg-body">
       <div class="msg-name">NYVEX <span class="tag">ai</span></div>
       <div class="typing"><span></span><span></span><span></span></div>
+      <div class="typing-label" id="typingLabel">${lbl}</div>
     </div>`;
   inner.appendChild(typing);
   scrollBottom($('chatScroll'));
+  setTimeout(() => {
+    const el = document.getElementById('typingLabel');
+    if (el) el.textContent = 'Печатает…';
+  }, 2000);
   return typing;
 }
 
 export function removeTyping() {
   $('typingIndicator')?.remove();
+}
+
+/** Progressive reveal of AI answer */
+export async function appendMessageStream(text, meta = null) {
+  const msg = appendMessage('ai', '', true, meta);
+  const textEl = msg?.querySelector('[data-text]');
+  if (!textEl) return msg;
+  const full = String(text || '');
+  const parts = full.split(/(\s+)/);
+  let acc = '';
+  const step = Math.max(1, Math.ceil(parts.length / 36));
+  for (let i = 0; i < parts.length; i += step) {
+    acc += parts.slice(i, i + step).join('');
+    textEl.innerHTML = renderMarkdown(acc) + '<span class="stream-caret"></span>';
+    scrollBottom($('chatScroll'));
+    await new Promise((r) => setTimeout(r, 24));
+  }
+  textEl.innerHTML = renderMarkdown(full);
+  if (msg) msg.dataset.msgText = full;
+  scrollBottom($('chatScroll'));
+  return msg;
 }

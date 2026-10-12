@@ -4,7 +4,7 @@
 import { $, isMobile } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { getCurrentChat, addMessageToCurrent } from './history.js';
-import { appendMessage, showTyping, removeTyping } from './messages.js';
+import { appendMessage, showTyping, removeTyping, appendMessageStream } from './messages.js';
 import { generateReply } from '../ai/chat.js';
 import {
   canSendMessage,
@@ -107,7 +107,11 @@ async function sendMessage() {
     const thinking = typeof result === 'object' ? result.thinking : null;
     const ms = typeof result === 'object' ? result.ms : 0;
     addMessageToCurrent('ai', answer, { thinking, thinkingMs: ms });
-    appendMessage('ai', answer, true, { thinking, thinkingMs: ms });
+    if (answer && answer.length > 40) {
+      await appendMessageStream(answer, { thinking, thinkingMs: ms });
+    } else {
+      appendMessage('ai', answer, true, { thinking, thinkingMs: ms });
+    }
     notifyResponseReady();
   } catch (e) {
     console.error('sendMessage', e);

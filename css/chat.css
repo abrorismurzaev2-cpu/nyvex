@@ -1124,3 +1124,21 @@
 @media (max-width: 820px) {
   .think-toggle span { display: none; }
 }
+
+.typing-label {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--dim-2, #8a8a9a);
+}
+.stream-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  background: #00d9ff;
+  vertical-align: text-bottom;
+  animation: caretBlink 0.8s step-end infinite;
+}
+@keyframes caretBlink {
+  50% { opacity: 0; }
+}
