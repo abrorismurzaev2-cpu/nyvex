@@ -264,8 +264,12 @@ function ensureWorker() {
           pendingGenerate.delete(msg.id);
           p.reject(new Error(msg.message || 'Worker error'));
         } else {
-          loadError = new Error(msg.message || 'Worker error');
+          loadError = friendlyLoadError(msg.message || 'Worker error');
           console.error('Worker error:', msg.message);
+          const live = document.getElementById('loadLiveMeta');
+          if (live) { live.textContent = String(loadError); live.style.opacity = '1'; }
+          const retry = document.getElementById('retryLoadBtn');
+          if (retry) retry.style.display = '';
           emitStatus();
         }
       }
@@ -273,7 +277,7 @@ function ensureWorker() {
     worker.onerror = (err) => {
       console.error('Worker crash:', err);
       useWorker = false;
-      loadError = err;
+      loadError = friendlyLoadError(err);
       emitStatus();
     };
     return worker;
@@ -314,6 +318,16 @@ function touchStallWatch() {
       emitStatus();
     }
   }, 62000);
+}
+
+function friendlyLoadError(err) {
+  const msg = String(err?.message || err || '');
+  if (/network|fetch|Failed to fetch|TypeError/i.test(msg)) {
+    return 'Ошибка сети. Проверьте интернет / Wi‑Fi и нажмите «Повторить».';
+  }
+  if (/CORS/i.test(msg)) return 'Ошибка доступа. Обновите страницу (Ctrl+Shift+R).';
+  if (/memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки.';
+  return msg.slice(0, 160) || 'Не удалось загрузить AI';
 }
 
 export function cancelLoad() {
@@ -381,8 +395,9 @@ export async function loadModel(modelId) {
   }
 
   const hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
-  const preferGpu = hasWebGPU && !isMobile();
-  modelDevice = preferGpu ? 'WebGPU' : 'WASM';
+  // Prefer WASM for stability (network + memory); GPU optional
+  const preferGpu = false;
+  modelDevice = hasWebGPU ? 'WebGPU?' : 'WASM';
 
   const w = ensureWorker();
   if (w && useWorker) {

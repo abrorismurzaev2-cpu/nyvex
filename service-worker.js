@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v11';
-const RUNTIME = 'nyvex-runtime-v11';
+const SHELL = 'nyvex-shell-v12';
+const RUNTIME = 'nyvex-runtime-v12';
 
 const PRECACHE = [
   './',
@@ -93,21 +93,34 @@ function isStatic(url) {
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  // Never cache payment / yookassa API
-  try {
-    const u = new URL(req.url);
-    if (/\/api\/(payment|yookassa|create-payment|webhook|subscription)/i.test(u.pathname) ||
-        u.hostname.includes('yookassa.ru')) {
-      return; // network only, no SW cache
-    }
-  } catch (_) {}
-  if (req.method !== 'GET') return;
   let url;
   try {
     url = new URL(req.url);
   } catch {
     return;
   }
+
+  // CRITICAL: never intercept HuggingFace / CDN / model downloads
+  const host = url.hostname || '';
+  if (
+    host.includes('huggingface.co') ||
+    host.includes('hf-mirror.com') ||
+    host.includes('xethub.hf.co') ||
+    host.includes('hf.co') ||
+    host.includes('jsdelivr.net') ||
+    host.includes('unpkg.com') ||
+    host.includes('yookassa.ru')
+  ) {
+    return; // browser network only
+  }
+
+  // Never cache payment APIs on our origin
+  try {
+    if (/\/api\/(payment|yookassa|create-payment|webhook|subscription)/i.test(url.pathname)) {
+      return;
+    }
+  } catch (_) {}
+  if (req.method !== 'GET') return;
   if (url.origin !== self.location.origin) return;
 
   if (isHTML(req)) {

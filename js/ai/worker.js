@@ -1,11 +1,16 @@
 /**
  * NYVEX — ai/worker.js
- * Load + generate off main thread
+ * Load + generate off main thread. Robust HF download.
  */
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
 
 env.allowLocalModels = false;
+env.allowRemoteModels = true;
 env.useBrowserCache = true;
+// Prefer official HF host (Transformers.js default)
+try {
+  if (!env.remoteHost) env.remoteHost = 'https://huggingface.co';
+} catch {}
 
 let MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 let generator = null;
@@ -16,13 +21,32 @@ function post(msg) {
   self.postMessage(msg);
 }
 
+function friendlyError(err) {
+  const msg = String(err?.message || err || '');
+  if (/network|fetch|Failed to fetch|Load failed|TypeError/i.test(msg)) {
+    return 'Ошибка сети при загрузке AI. Проверьте интернет / Wi‑Fi и повторите.';
+  }
+  if (/CORS|cross-origin/i.test(msg)) {
+    return 'Ошибка доступа к модели. Обновите страницу (Ctrl+Shift+R).';
+  }
+  if (/memory|out of memory|OOM/i.test(msg)) {
+    return 'Недостаточно памяти. Закройте другие вкладки и повторите.';
+  }
+  if (/WebGPU/i.test(msg)) {
+    return 'WebGPU недоступен, пробуем WASM…';
+  }
+  return msg.slice(0, 180) || 'Не удалось загрузить AI';
+}
+
 async function loadPipeline(preferGpu) {
-  const order = preferGpu ? ['webgpu', 'wasm'] : ['wasm'];
+  // Mobile / unstable GPU: prefer WASM first for reliability
+  const order = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
   let lastErr = null;
+
   for (const dev of order) {
-    for (const dt of ['q4', 'q8']) {
+    for (const dt of ['q4', 'q4f16', 'q8']) {
       try {
-        post({ type: 'progress', status: 'init', message: 'Подключение…' });
+        post({ type: 'progress', status: 'init', message: 'Подключение · ' + dev });
         console.log('[nyvex-worker] load', MODEL_ID, dev, dt);
         device = dev;
         const progressMap = {};
@@ -84,7 +108,7 @@ async function loadPipeline(preferGpu) {
         post({
           type: 'progress',
           status: 'init',
-          message: 'Повтор…',
+          message: friendlyError(err),
         });
         generator = null;
       }
@@ -136,7 +160,7 @@ self.onmessage = async (e) => {
     if (type === 'ping') post({ type: 'pong', ready, device });
   } catch (err) {
     console.error('[nyvex-worker]', err);
-    post({ type: 'error', id, message: String(err?.message || err || 'unknown') });
+    post({ type: 'error', id, message: friendlyError(err) });
   }
 };
 
