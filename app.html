@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://huggingface.co https://*.hf.co https://hf-mirror.com https://*.hf-mirror.com https://api.yookassa.ru https://*.vercel.app; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob:; connect-src 'self' https://cdn.jsdelivr.net https://huggingface.co https://*.huggingface.co https://cdn-lfs.huggingface.co https://cdn-lfs-us-1.huggingface.co https://cas-bridge.xethub.hf.co https://*.xethub.hf.co https://*.hf.co https://hf-mirror.com https://*.hf-mirror.com https://api.yookassa.ru https://*.vercel.app blob: data:; worker-src 'self' blob:; child-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';">
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
   <meta http-equiv="X-Frame-Options" content="DENY">
   <meta name="referrer" content="strict-origin-when-cross-origin">
@@ -53,7 +53,7 @@
     <div class="sr-only" id="loadWarn"></div>
     <div class="sr-only" id="loadFill"></div>
     <div class="splash-meta" id="loadLiveMeta" style="opacity:0.7;font-size:12px;color:#8a8a9a;text-align:center;max-width:90%;padding:0 16px;font-variant-numeric:tabular-nums;">Загрузка AI…</div>
-    <button type="button" class="btn btn-ghost splash-skip" id="cancelLoadBtn">Отменить</button>
+    <button type="button" class="btn btn-ghost splash-skip" id="cancelLoadBtn">Свернуть</button>
     <button type="button" class="btn btn-primary splash-retry" id="retryLoadBtn" style="display:none">Повторить</button>
   </div>
 

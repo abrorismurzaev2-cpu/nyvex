@@ -5,6 +5,13 @@
 import { MODEL, CDN, MODEL_ID } from '../core/config.js';
 import { isMobile, $ } from '../core/utils.js';
 import { toast } from '../core/toast.js';
+import { saveProgressMeta, loadProgressMeta, clearProgressMeta } from './progress-store.js';
+import {
+  requestDownloadNotifPermission,
+  notifyDownloadStart,
+  notifyDownloadProgress,
+  notifyDownloadDone,
+} from './download-notify.js';
 
 let worker = null;
 let modelReady = false;
@@ -34,6 +41,10 @@ export function getActiveModelId() {
 
 export function isModelReady() {
   return modelReady;
+}
+
+export function isLoading() {
+  return loading;
 }
 
 export function getModelDevice() {
@@ -144,6 +155,12 @@ function updateUI(payload) {
       live.textContent = payload.status === 'from_cache' ? 'Загружено из кэша · мгновенно' : 'AI готов';
       live.style.opacity = '1';
     }
+    saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
+    try { notifyDownloadDone(); } catch {}
+    try {
+      const hw = document.getElementById('headerLoadWrap');
+      if (hw) hw.style.display = 'none';
+    } catch {}
     emitStatus();
     return;
   }
@@ -160,6 +177,25 @@ function updateUI(payload) {
     lastProgressAt = Date.now();
     touchStallWatch();
     updateRingProgress(loadPct);
+    saveProgressMeta({
+      totalLoaded: loaded,
+      totalBytes: total,
+      percent: loadPct,
+      file: payload.file || '',
+      ready: false,
+    });
+    try {
+      const sp = formatSpeed(payload.speed);
+      const et = formatEta(payload.eta);
+      notifyDownloadProgress(loadPct, sp, et);
+    } catch {}
+    // header mini bar
+    try {
+      const hb = document.getElementById('headerLoadBar');
+      const hw = document.getElementById('headerLoadWrap');
+      if (hb) hb.style.width = loadPct + '%';
+      if (hw) hw.style.display = loadPct < 100 ? '' : 'none';
+    } catch {}
     if (fill) fill.style.width = loadPct + '%';
     if (pc) pc.textContent = Math.round(loadPct) + '%';
     if (st) st.textContent = 'Скачивание модели…';
@@ -211,6 +247,7 @@ function ensureWorker() {
         updateUI(msg);
       } else if (msg.type === 'loaded') {
         modelReady = true;
+        loading = false;
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
         loadPct = 100;
         updateUI({ status: 'done' });
@@ -318,6 +355,23 @@ export async function loadModel(modelId) {
   loadError = null;
   loadPct = 0;
   emitStatus();
+
+  try {
+    const prev = loadProgressMeta();
+    if (prev && prev.percent > 0 && prev.percent < 100 && !prev.ready) {
+      loadPct = prev.percent;
+      updateRingProgress(loadPct);
+      const live = document.getElementById('loadLiveMeta');
+      if (live) {
+        live.textContent =
+          'Продолжаем загрузку с ' + Math.round(prev.percent) + '% · Cache API подхватит файлы';
+        live.style.opacity = '1';
+      }
+    }
+  } catch {}
+  requestDownloadNotifPermission().then((ok) => {
+    if (ok) notifyDownloadStart();
+  }).catch(() => {});
 
   const warn = $('loadWarn');
   if (warn) {

@@ -5,7 +5,7 @@
 import { initRouter, showScreen } from './core/router.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
-import { loadModel, cancelLoad, isModelReady } from './ai/loader.js';
+import { loadModel, cancelLoad, isModelReady, isLoading } from './ai/loader.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
 import { initSidebar } from './ui/sidebar.js';
@@ -45,20 +45,7 @@ async function boot() {
     initControls();
     initChatMenu();
 
-    document.getElementById('cancelLoadBtn')?.addEventListener('click', () => {
-      cancelLoad();
-      enterApp();
-    });
-    document.getElementById('retryLoadBtn')?.addEventListener('click', async () => {
-      const btn = document.getElementById('retryLoadBtn');
-      if (btn) btn.style.display = 'none';
-      try {
-        await loadModel();
-      } catch (e) {
-        console.error(e);
-        if (btn) btn.style.display = '';
-      }
-    });
+    // minimize / retry wired in boot after loading screen
 
     $('newChatBtn')?.addEventListener('click', () => createChat());
     $('homeLogo')?.addEventListener('click', () => createChat());
@@ -87,29 +74,63 @@ async function boot() {
     await getDeviceId();
     await refreshTrialCache();
 
+    // Model must load on splash (or resume from cache)
     showScreen('loading');
-    // Enter chat quickly; model loads in parallel
+
+    let minimized = false;
+    const minimizeBtn = document.getElementById('cancelLoadBtn');
+    if (minimizeBtn) {
+      minimizeBtn.textContent = 'Свернуть';
+      minimizeBtn.onclick = () => {
+        minimized = true;
+        enterApp();
+        toast('Загрузка AI продолжается в фоне');
+        const hw = document.getElementById('headerLoadWrap');
+        if (hw) hw.style.display = '';
+      };
+    }
+
+    document.getElementById('retryLoadBtn')?.addEventListener('click', async () => {
+      const btn = document.getElementById('retryLoadBtn');
+      if (btn) btn.style.display = 'none';
+      minimized = false;
+      showScreen('loading');
+      try {
+        await loadModel();
+        if (isModelReady()) enterApp();
+      } catch (e) {
+        console.error(e);
+        if (btn) btn.style.display = '';
+      }
+    });
+
     const loadPromise = loadModel().catch((e) => {
-      console.error(e);
+      console.error('loadModel', e);
+      toast('Ошибка загрузки AI. Проверьте интернет.');
+      const retry = document.getElementById('retryLoadBtn');
+      if (retry) retry.style.display = '';
       return false;
     });
 
-    await Promise.race([
-      loadPromise,
-      new Promise((r) => setTimeout(r, 1800)),
-    ]);
-
-    enterApp();
-
+    // Stay on loading screen until ready (unless user minimized)
     loadPromise.then((ok) => {
-      if (!ok && !isModelReady()) {
-        toast('AI загружается в фоне. При первом запуске нужен интернет.');
+      if (isModelReady()) {
+        if (!minimized) {
+          enterApp();
+          try {
+            $('composerInput')?.focus();
+          } catch {}
+        } else {
+          toast('AI готов к работе');
+          const hw = document.getElementById('headerLoadWrap');
+          if (hw) hw.style.display = 'none';
+        }
+        try {
+          const status = document.querySelector('.welcome-status span:last-child');
+          if (status) status.textContent = 'AI готов';
+          document.querySelector('.welcome-status')?.classList.remove('loading');
+        } catch {}
       }
-      try {
-        const status = document.querySelector('.welcome-status span:last-child');
-        if (status && isModelReady()) status.textContent = 'AI готов';
-        document.querySelector('.welcome-status')?.classList.remove('loading');
-      } catch {}
     });
   } catch (e) {
     console.error('boot', e);
