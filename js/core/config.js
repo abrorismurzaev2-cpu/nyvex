@@ -80,7 +80,7 @@ export function getApiBase() {
   const host = window.location.hostname || '';
   // GitHub Pages / local → production API host (set APP_URL on Vercel to match frontend return)
   if (host.includes('github.io') || host === 'localhost' || host === '127.0.0.1') {
-    return 'https://nyvex.vercel.app';
+    return 'https://nyvex-xi.vercel.app';
   }
   // Same origin when app is served from Vercel
   return '';
