@@ -12,6 +12,17 @@ import {
   notifyDownloadProgress,
   notifyDownloadDone,
 } from './download-notify.js';
+import {
+  hasModelInCache,
+  requestPersistentStorage,
+  isLikelyIncognito,
+  checkFreeSpace,
+  formatBytes as fmtCacheBytes,
+  getModelCacheSize,
+  clearModelCache,
+} from './model-cache.js';
+
+export { getModelCacheSize, clearModelCache, hasModelInCache };
 
 let worker = null;
 let modelReady = false;
@@ -383,9 +394,56 @@ export async function loadModel(modelId) {
       }
     }
   } catch {}
-  requestDownloadNotifPermission().then((ok) => {
-    if (ok) notifyDownloadStart();
-  }).catch(() => {});
+  // Persistent storage so browser does not evict model cache
+  requestPersistentStorage().then((p) => console.log('[nyvex] persistent', p)).catch(() => {});
+
+  try {
+    if (await isLikelyIncognito()) {
+      const live = document.getElementById('loadLiveMeta');
+      if (live) {
+        live.textContent = 'Приватный режим: модель может не сохраниться. Откройте в обычном окне.';
+        live.style.opacity = '1';
+      }
+      try {
+        toast('Приватный режим — кэш модели может не сохраниться');
+      } catch {}
+    }
+  } catch {}
+
+  try {
+    const space = await checkFreeSpace();
+    if (space && space.free > 0 && space.free < 1.2 * 1024 * 1024 * 1024) {
+      const live = document.getElementById('loadLiveMeta');
+      if (live) {
+        live.textContent = 'Мало места (' + fmtCacheBytes(space.free) + '). Нужно ~1.5 ГБ для AI.';
+        live.style.opacity = '1';
+      }
+    }
+  } catch {}
+
+  let fromCache = false;
+  try {
+    fromCache = await hasModelInCache();
+    console.log('[nyvex] model in cache?', fromCache);
+    const live = document.getElementById('loadLiveMeta');
+    if (live) {
+      live.textContent = fromCache
+        ? 'Загрузка из кэша · мгновенно'
+        : 'Первая загрузка · ~900 МБ · нужен Wi‑Fi';
+      live.style.opacity = '1';
+    }
+    // Only spam download notifications on first full download
+    if (!fromCache) {
+      requestDownloadNotifPermission().then((ok) => {
+        if (ok) notifyDownloadStart();
+      }).catch(() => {});
+    }
+  } catch {
+    requestDownloadNotifPermission().then((ok) => {
+      if (ok) notifyDownloadStart();
+    }).catch(() => {});
+  }
+
 
   const warn = $('loadWarn');
   if (warn) {
@@ -439,6 +497,7 @@ async function loadMainThread(preferGpu) {
     const { pipeline, env } = await import(/* @vite-ignore */ CDN.primary);
     env.allowLocalModels = false;
     env.useBrowserCache = true;
+    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache'; } catch {}
     modelDevice = preferGpu ? 'WebGPU' : 'WASM';
 
     const progressMap = {};

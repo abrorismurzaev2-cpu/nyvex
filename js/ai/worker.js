@@ -7,10 +7,18 @@ import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transfo
 env.allowLocalModels = false;
 env.allowRemoteModels = true;
 env.useBrowserCache = true;
-// Prefer official HF host (Transformers.js default)
+// Dedicated Cache Storage name — must survive SW shell updates
+try {
+  env.cacheDir = 'nyvex-model-cache';
+} catch {}
 try {
   if (!env.remoteHost) env.remoteHost = 'https://huggingface.co';
 } catch {}
+console.log('[nyvex-worker] cache env', {
+  useBrowserCache: env.useBrowserCache,
+  allowRemoteModels: env.allowRemoteModels,
+  cacheDir: env.cacheDir,
+});
 
 let MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 let generator = null;

@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v12';
-const RUNTIME = 'nyvex-runtime-v12';
+const SHELL = 'nyvex-shell-v13';
+const RUNTIME = 'nyvex-runtime-v13';
 
 const PRECACHE = [
   './',
@@ -68,10 +68,30 @@ self.addEventListener('install', (event) => {
   );
 });
 
+function isModelCacheName(name) {
+  const n = String(name || '').toLowerCase();
+  // Transformers.js / ONNX / HF blobs — NEVER delete on SW update
+  return (
+    n.includes('transformers') ||
+    n.includes('huggingface') ||
+    n.includes('nyvex-model') ||
+    n.includes('onnx') ||
+    n.includes('wasm') ||
+    n.includes('ort-')
+  );
+}
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== SHELL && k !== RUNTIME).map((k) => caches.delete(k)))
+      Promise.all(
+        keys
+          .filter((k) => k !== SHELL && k !== RUNTIME && !isModelCacheName(k))
+          .map((k) => {
+            console.log('[sw] delete old cache', k);
+            return caches.delete(k);
+          })
+      )
     ).then(() => self.clients.claim())
   );
 });

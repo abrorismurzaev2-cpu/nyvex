@@ -5,7 +5,7 @@ import { $ } from '../core/utils.js';
 import { storage } from '../core/storage.js';
 import { toast } from '../core/toast.js';
 import { clearAllHistory } from '../chat/history.js';
-import { onModelStatus, getModelStatus } from '../ai/loader.js';
+import { onModelStatus, getModelStatus, getModelCacheSize, clearModelCache } from '../ai/loader.js';
 import { clearAllNyvexData } from '../core/utils.js';
 import { showPaymentModal, refreshSubUI, getCachedState, refreshTrialCache } from '../core/trial.js';
 import { showScreen } from '../core/router.js';
@@ -52,6 +52,18 @@ export function initSettings() {
   });
 
   onModelStatus((st) => updateAiStatus(st));
+  refreshCacheInfo();
+  $('aiClearCacheBtn')?.addEventListener('click', async () => {
+    if (!confirm('Удалить кэш AI с устройства? При следующем запуске модель скачается заново (~900 МБ).')) return;
+    try {
+      await clearModelCache();
+      toast('Кэш модели очищен');
+      await refreshCacheInfo();
+    } catch (e) {
+      console.error(e);
+      toast('Не удалось очистить кэш');
+    }
+  });
 
   $('exportDataBtn')?.addEventListener('click', () => {
     try {
@@ -156,5 +168,24 @@ function updateAiStatus(st) {
       btn.dataset.act = 'load';
       btn.style.display = '';
     }
+  }
+}
+
+
+async function refreshCacheInfo() {
+  const el = $('aiCacheSize');
+  if (!el) return;
+  try {
+    const { formatBytes } = await import('../ai/model-cache.js');
+    const size = await getModelCacheSize();
+    if (size > 5 * 1024 * 1024) {
+      el.textContent = 'Модель сохранена на устройстве · ' + formatBytes(size);
+    } else if (size > 0) {
+      el.textContent = 'Кэш частично · ' + formatBytes(size);
+    } else {
+      el.textContent = 'Кэш модели пуст — нужна первая загрузка';
+    }
+  } catch {
+    el.textContent = 'Кэш модели: н/д';
   }
 }
