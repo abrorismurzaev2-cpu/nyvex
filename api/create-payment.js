@@ -81,8 +81,7 @@ export default async function handler(req, res) {
     const payload = {
       amount: { value: PRICE, currency: CURRENCY },
       capture: true,
-      save_payment_method: true,
-      description: 'NYVEX Pro — 30 дней доступа',
+            description: 'NYVEX Pro — 30 дней доступа',
       confirmation: {
         type: 'redirect',
         return_url: returnUrl,
