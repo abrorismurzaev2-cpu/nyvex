@@ -286,9 +286,16 @@ function ensureWorker() {
       }
     };
     worker.onerror = (err) => {
-      console.error('Worker crash:', err);
+      console.error('Worker crash:', err, err?.message, err?.filename, err?.error);
       useWorker = false;
       loadError = friendlyLoadError(err);
+      const live = document.getElementById('loadLiveMeta');
+      if (live) {
+        live.textContent = String(loadError);
+        live.style.opacity = '1';
+      }
+      const retry = document.getElementById('retryLoadBtn');
+      if (retry) retry.style.display = '';
       emitStatus();
     };
     return worker;
@@ -332,13 +339,58 @@ function touchStallWatch() {
 }
 
 function friendlyLoadError(err) {
-  const msg = String(err?.message || err || '');
-  if (/network|fetch|Failed to fetch|TypeError/i.test(msg)) {
+  // Worker onerror passes ErrorEvent → "[object Event]" if stringified naively
+  let msg = '';
+  try {
+    if (err == null) msg = '';
+    else if (typeof err === 'string') msg = err;
+    else if (err instanceof Error) msg = err.message || err.name || '';
+    else if (typeof Event !== 'undefined' && err instanceof Event) {
+      msg = err.message || err.type || (err.filename ? String(err.filename) : '') || 'Worker error';
+      if (err.error && err.error.message) msg = err.error.message;
+    } else if (typeof err === 'object') {
+      msg = err.message || err.reason || err.type || '';
+      if (!msg) {
+        try { msg = JSON.stringify(err); } catch { msg = Object.prototype.toString.call(err); }
+      }
+    } else {
+      msg = String(err);
+    }
+  } catch {
+    msg = 'Неизвестная ошибка загрузки';
+  }
+  msg = String(msg || '');
+  if (/network|fetch|Failed to fetch|TypeError|Load failed/i.test(msg)) {
     return 'Ошибка сети. Проверьте интернет / Wi‑Fi и нажмите «Повторить».';
   }
-  if (/CORS/i.test(msg)) return 'Ошибка доступа. Обновите страницу (Ctrl+Shift+R).';
-  if (/memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки.';
-  return msg.slice(0, 160) || 'Не удалось загрузить AI';
+  if (/CORS|cross-origin/i.test(msg)) return 'Ошибка доступа. Обновите приложение.';
+  if (/memory|OOM|out of memory/i.test(msg)) return 'Недостаточно памяти. Закройте другие приложения.';
+  if (/\[object Event\]/i.test(msg) || msg === 'error') {
+    return 'Сбой загрузки AI в WebView. Проверьте интернет и нажмите «Повторить».';
+  }
+  return (msg.slice(0, 160) || 'Не удалось загрузить AI');
+}
+
+export function logRuntimeEnvironment() {
+  try {
+    const info = {
+      isCapacitor: !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()),
+      hasGPU: typeof navigator !== 'undefined' && 'gpu' in navigator,
+      hasFetch: typeof fetch === 'function',
+      hasCaches: typeof caches !== 'undefined',
+      hasIDB: typeof indexedDB !== 'undefined',
+      hasWASM: typeof WebAssembly !== 'undefined',
+      hasWorker: typeof Worker !== 'undefined',
+      protocol: location.protocol,
+      origin: location.origin,
+      ua: (navigator.userAgent || '').slice(0, 120),
+    };
+    console.log('[nyvex] Environment', info);
+    return info;
+  } catch (e) {
+    console.warn('env log', e);
+    return {};
+  }
 }
 
 export function cancelLoad() {

@@ -4,11 +4,23 @@
   "webDir": "www",
   "bundledWebRuntime": false,
   "server": {
-    "androidScheme": "https"
+    "androidScheme": "https",
+    "allowNavigation": [
+      "huggingface.co",
+      "*.huggingface.co",
+      "cdn-lfs.huggingface.co",
+      "cdn-lfs-us-1.huggingface.co",
+      "cas-bridge.xethub.hf.co",
+      "*.xethub.hf.co",
+      "cdn.jsdelivr.net",
+      "nyvex-xi.vercel.app",
+      "*.yookassa.ru",
+      "yoomoney.ru"
+    ]
   },
   "android": {
-    "allowMixedContent": false,
-    "webContentsDebuggingEnabled": false,
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": true,
     "backgroundColor": "#0a0a0f"
   },
   "plugins": {

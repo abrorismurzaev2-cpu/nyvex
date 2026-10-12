@@ -66,10 +66,18 @@ async function boot() {
 
     document.addEventListener('gesturestart', (e) => e.preventDefault());
 
-    if ('serviceWorker' in navigator) {
+    const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    // Service Worker often breaks in Capacitor WebView — skip on native
+    if ('serviceWorker' in navigator && !isNative) {
       navigator.serviceWorker.register('./service-worker.js').then((reg) => {
         try { reg.update(); } catch {}
       }).catch(() => {});
+    }
+    try {
+      const { initPaymentDeepLink } = await import('./payment/checkout.js');
+      initPaymentDeepLink();
+    } catch (e) {
+      console.warn('payment deeplink', e);
     }
 
     // Device ID + trial start
