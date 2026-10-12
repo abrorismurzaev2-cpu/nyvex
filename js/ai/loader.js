@@ -511,8 +511,8 @@ export async function loadModel(modelId) {
 
   const hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
   // Prefer WASM for stability (network + memory); GPU optional
-  const preferGpu = false;
-  modelDevice = hasWebGPU ? 'WebGPU?' : 'WASM';
+  const preferGpu = hasWebGPU;
+  modelDevice = preferGpu ? 'WebGPU' : 'WASM';
 
   const w = ensureWorker();
   if (w && useWorker) {
@@ -554,7 +554,7 @@ async function loadMainThread(preferGpu) {
     const { pipeline, env } = await import(/* @vite-ignore */ CDN.primary);
     env.allowLocalModels = false;
     env.useBrowserCache = true;
-    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache'; } catch {}
+    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
     modelDevice = preferGpu ? 'WebGPU' : 'WASM';
 
     const progressMap = {};

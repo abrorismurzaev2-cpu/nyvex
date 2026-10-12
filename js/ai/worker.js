@@ -1,32 +1,30 @@
 /**
  * NYVEX — ai/worker.js
- * Load + generate off main thread. Robust HF download.
+ * Load + generate off main thread. Retries + mirror fallback.
  */
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
 
 env.allowLocalModels = false;
 env.allowRemoteModels = true;
 env.useBrowserCache = true;
-// Dedicated Cache Storage name — must survive SW shell updates
+// New cache bucket so old broken partial downloads are not reused
 try {
-  env.cacheDir = 'nyvex-model-cache';
+  env.cacheDir = 'nyvex-model-cache-v2';
 } catch {}
-try {
-  if (!env.remoteHost) env.remoteHost = 'https://huggingface.co';
-} catch {}
-console.log('[nyvex-worker] cache env', {
-  useBrowserCache: env.useBrowserCache,
-  allowRemoteModels: env.allowRemoteModels,
-  cacheDir: env.cacheDir,
-});
 
-let MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
+let MODEL_ID = 'skjortan/MiniCPM5-1B-ONNX';
 let generator = null;
 let device = 'wasm';
 let ready = false;
 
+const MIRRORS = ['https://huggingface.co', 'https://hf-mirror.com'];
+
 function post(msg) {
   self.postMessage(msg);
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
 }
 
 function friendlyError(err) {
@@ -35,10 +33,10 @@ function friendlyError(err) {
     return 'Ошибка сети при загрузке AI. Проверьте интернет / Wi‑Fi и повторите.';
   }
   if (/CORS|cross-origin/i.test(msg)) {
-    return 'Ошибка доступа к модели. Обновите страницу (Ctrl+Shift+R).';
+    return 'Ошибка доступа к модели. Обновите страницу.';
   }
   if (/memory|out of memory|OOM/i.test(msg)) {
-    return 'Недостаточно памяти. Закройте другие вкладки и повторите.';
+    return 'Недостаточно памяти. Закройте другие вкладки.';
   }
   if (/WebGPU/i.test(msg)) {
     return 'WebGPU недоступен, пробуем WASM…';
@@ -46,79 +44,100 @@ function friendlyError(err) {
   return msg.slice(0, 180) || 'Не удалось загрузить AI';
 }
 
-async function loadPipeline(preferGpu) {
-  // Mobile / unstable GPU: prefer WASM first for reliability
-  const order = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
-  let lastErr = null;
+async function tryPipeline(dev, dt, remoteHost) {
+  try {
+    if (remoteHost) env.remoteHost = remoteHost;
+  } catch {}
 
-  for (const dev of order) {
-    for (const dt of ['q4', 'q4f16', 'q8']) {
+  const progressMap = {};
+  let lastTs = Date.now();
+  let lastLoaded = 0;
+
+  return pipeline('text-generation', MODEL_ID, {
+    device: dev,
+    dtype: dt,
+    progress_callback: (p) => {
       try {
-        post({ type: 'progress', status: 'init', message: 'Подключение · ' + dev });
-        console.log('[nyvex-worker] load', MODEL_ID, dev, dt);
-        device = dev;
-        const progressMap = {};
-        let lastTs = Date.now();
-        let lastLoaded = 0;
+        if (p.file) console.log('[nyvex-worker]', p.status, p.file, p.loaded, p.total);
+        if (p.status === 'progress' && p.file) {
+          progressMap[p.file] = { loaded: p.loaded || 0, total: p.total || 0 };
+          let total = 0;
+          let loaded = 0;
+          for (const k in progressMap) {
+            total += progressMap[k].total || 0;
+            loaded += progressMap[k].loaded || 0;
+          }
+          if (!total) total = 900 * 1024 * 1024;
+          const now = Date.now();
+          const dtSec = Math.max(0.25, (now - lastTs) / 1000);
+          const speed = Math.max(0, (loaded - lastLoaded) / dtSec);
+          lastTs = now;
+          lastLoaded = loaded;
+          const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : 0;
+          const remaining = speed > 0 && total > loaded ? (total - loaded) / speed : 0;
+          post({
+            type: 'progress',
+            status: 'progress',
+            loaded,
+            total,
+            pct,
+            speed,
+            eta: remaining,
+            file: String(p.file || '').split('/').pop(),
+          });
+        } else if (p.status === 'ready') {
+          post({ type: 'progress', status: 'ready', message: 'Инициализация…', pct: 99 });
+        } else if (p.status === 'done') {
+          post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
+        } else if (p.status === 'initiate' || p.status === 'download') {
+          post({
+            type: 'progress',
+            status: 'init',
+            message: p.file ? String(p.file).split('/').pop() : 'Скачивание…',
+          });
+        }
+      } catch (e) {
+        console.error('[nyvex-worker] progress', e);
+      }
+    },
+  });
+}
 
-        generator = await pipeline('text-generation', MODEL_ID, {
-          device: dev,
-          dtype: dt,
-          progress_callback: (p) => {
-            try {
-              if (p.file) console.log('[nyvex-worker]', p.status, p.file, p.loaded, p.total);
-              if (p.status === 'progress' && p.file) {
-                progressMap[p.file] = { loaded: p.loaded || 0, total: p.total || 0 };
-                let total = 0;
-                let loaded = 0;
-                for (const k in progressMap) {
-                  total += progressMap[k].total || 0;
-                  loaded += progressMap[k].loaded || 0;
-                }
-                if (!total) total = 900 * 1024 * 1024;
-                const now = Date.now();
-                const dtSec = Math.max(0.25, (now - lastTs) / 1000);
-                const speed = Math.max(0, (loaded - lastLoaded) / dtSec);
-                lastTs = now;
-                lastLoaded = loaded;
-                const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : 0;
-                const remaining = speed > 0 && total > loaded ? (total - loaded) / speed : 0;
-                post({
-                  type: 'progress',
-                  status: 'progress',
-                  loaded,
-                  total,
-                  pct,
-                  speed,
-                  eta: remaining,
-                  file: String(p.file || '').split('/').pop(),
-                });
-              } else if (p.status === 'ready') {
-                post({ type: 'progress', status: 'ready', message: 'Инициализация…', pct: 99 });
-              } else if (p.status === 'done') {
-                post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
-              } else if (p.status === 'initiate' || p.status === 'download') {
-                post({
-                  type: 'progress',
-                  status: 'init',
-                  message: p.file ? String(p.file).split('/').pop() : 'Скачивание…',
-                });
-              }
-            } catch (e) {
-              console.error('[nyvex-worker] progress', e);
-            }
-          },
-        });
-        return;
-      } catch (err) {
-        lastErr = err;
-        console.error('[nyvex-worker] failed', dev, dt, err);
-        post({
-          type: 'progress',
-          status: 'init',
-          message: friendlyError(err),
-        });
-        generator = null;
+async function loadPipeline(preferGpu) {
+  // Prefer WebGPU when available, else WASM; dtype q4f16 then q4
+  const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
+  const dtypes = ['q4f16', 'q4'];
+  let lastErr = null;
+  let attempt = 0;
+
+  for (const mirror of MIRRORS) {
+    for (const dev of devices) {
+      for (const dt of dtypes) {
+        for (let retry = 0; retry < 4; retry++) {
+          attempt++;
+          try {
+            post({
+              type: 'progress',
+              status: 'init',
+              message: retry ? `Повтор ${retry}/3…` : `Подключение…`,
+            });
+            console.log('[nyvex-worker] load attempt', attempt, MODEL_ID, dev, dt, mirror);
+            device = dev;
+            generator = await tryPipeline(dev, dt, mirror);
+            return;
+          } catch (err) {
+            lastErr = err;
+            console.error('[nyvex-worker] failed', attempt, dev, dt, mirror, err);
+            post({
+              type: 'progress',
+              status: 'init',
+              message: friendlyError(err),
+            });
+            generator = null;
+            // Exponential backoff: 1s, 2s, 4s, 6s
+            await sleep(Math.min(6000, 1000 * Math.pow(2, retry)));
+          }
+        }
       }
     }
   }

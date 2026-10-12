@@ -68,6 +68,6 @@ APK: `android/app/build/outputs/apk/release/`.
 ## Важно
 
 - **Без математического решальника** — только чат с LLM.
-- Модель: `onnx-community/Qwen2.5-0.5B-Instruct` через Transformers.js.
+- Модель: локальная ONNX-модель через Transformers.js.
 - Нет серверной аналитики и трекинга.
 - MIT License.

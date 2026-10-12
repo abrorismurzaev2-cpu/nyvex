@@ -3,13 +3,14 @@
  * IMPORTANT: never arrayBuffer() whole model files (900MB+) just to measure size
  */
 export const MODEL_CACHE_NAMES = [
+  'nyvex-model-cache-v2',
   'nyvex-model-cache',
   'transformers-cache',
   'transformers-cache-v1',
 ];
 
-const READY_KEY = 'nyvex_model_ready_v1';
-const SIZE_KEY = 'nyvex_model_cache_size_est';
+const READY_KEY = 'nyvex_model_ready_v2';
+const SIZE_KEY = 'nyvex_model_cache_size_est_v2';
 
 function looksLikeModelUrl(url) {
   const u = String(url || '').toLowerCase();
