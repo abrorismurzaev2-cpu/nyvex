@@ -43,13 +43,11 @@ jobs:
           cp www/app.html www/index.html
           echo "webDir ready"
 
-      - name: Init Capacitor
       - name: Init Capacitor Android
         run: |
           npx cap add android || true
           npx cap sync android
 
-      - name: Apply icons
       - name: Apply icons and version
         run: |
           pip install pillow -q
