@@ -92,7 +92,7 @@ async function boot() {
       console.warn('sub sync', e);
     }
 
-    // Model splash: full progress only on first download
+    // Model splash: logo-only if cached, full progress if first download
     showScreen('loading');
     let modelState = 'not-downloaded';
     try {
@@ -101,22 +101,21 @@ async function boot() {
     const isCached = modelState === 'cached';
     console.log('[nyvex] modelState', modelState);
 
-    // UI mode
     const progressEls = [
       'loadLiveMeta', 'loadMb', 'loadSpeed', 'loadEta', 'loadStatus', 'loadDetail', 'loadWarn',
     ];
     const cancelBtn = document.getElementById('cancelLoadBtn');
     const retryBtn = document.getElementById('retryLoadBtn');
     if (isCached) {
-      // Logo-only quick splash
       progressEls.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
       });
       if (cancelBtn) cancelBtn.style.display = 'none';
       if (retryBtn) retryBtn.style.display = 'none';
-      const bar = document.querySelector('#screen-loading .sub-progress, #screen-loading .load-bar, .splash-progress');
-      if (bar) bar.style.display = 'none';
+      document.querySelectorAll('#screen-loading .sub-progress, #screen-loading .load-bar, .splash-progress, .load-ring').forEach((el) => {
+        try { el.style.display = 'none'; } catch {}
+      });
     } else {
       progressEls.forEach((id) => {
         const el = document.getElementById(id);
@@ -153,11 +152,20 @@ async function boot() {
     });
 
     const t0 = Date.now();
+    // FAST PATH: model already on device → open chat after ~600ms, finish init in background
+    if (isCached) {
+      setTimeout(() => {
+        if (!minimized) {
+          enterApp();
+          try { $('composerInput')?.focus(); } catch {}
+        }
+      }, 600);
+    }
+
     const loadPromise = loadModel().catch((e) => {
       console.error('loadModel', e);
       toast('Не удалось загрузить AI. Проверьте интернет или VPN.');
       if (retryBtn) retryBtn.style.display = '';
-      // show meta again on error
       progressEls.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = '';
@@ -165,12 +173,18 @@ async function boot() {
       return false;
     });
 
-    loadPromise.then(async (ok) => {
+    loadPromise.then(async () => {
       if (!isModelReady()) return;
-      // Cached path: ensure minimum logo time ~600ms
       if (isCached) {
-        const wait = Math.max(0, 600 - (Date.now() - t0));
-        if (wait) await new Promise((r) => setTimeout(r, wait));
+        // already entered chat; just update status
+        try {
+          const status = document.querySelector('.welcome-status span:last-child');
+          if (status) status.textContent = 'AI готов';
+          document.querySelector('.welcome-status')?.classList.remove('loading');
+          const hw = document.getElementById('headerLoadWrap');
+          if (hw) hw.style.display = 'none';
+        } catch {}
+        return;
       }
       if (!minimized) {
         enterApp();

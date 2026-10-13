@@ -1168,3 +1168,23 @@
 .think-toggle.on {
   box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.35);
 }
+
+
+/* Think — always interactive */
+#thinkToggle.think-toggle {
+  position: relative;
+  z-index: 20;
+  pointer-events: auto !important;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 40px;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+#thinkToggle.think-toggle.on {
+  color: #b8a3ff !important;
+  background: linear-gradient(135deg, rgba(124,92,255,0.25), rgba(0,217,255,0.12)) !important;
+  border-color: rgba(124,92,255,0.55) !important;
+  box-shadow: 0 0 12px rgba(124,92,255,0.3);
+}

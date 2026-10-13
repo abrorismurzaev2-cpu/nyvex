@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v16';
-const RUNTIME = 'nyvex-runtime-v16';
+const SHELL = 'nyvex-shell-v17';
+const RUNTIME = 'nyvex-runtime-v17';
 
 const PRECACHE = [
   './',
