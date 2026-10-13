@@ -1,5 +1,6 @@
+import { initModelSettings } from './models-settings.js';
 /**
- * NYVEX — ui/settings.js (no profile, no model picker)
+ * NYVEX — ui/settings.js (settings panel)
  */
 import { $ } from '../core/utils.js';
 import { storage } from '../core/storage.js';
@@ -11,11 +12,19 @@ import { showPaymentModal, refreshSubUI, getCachedState, refreshTrialCache } fro
 import { showScreen } from '../core/router.js';
 
 export function initSettings() {
+  try {
+    initModelSettings();
+  } catch (e) {
+    console.warn('model settings', e);
+  }
   const panel = $('settingsPanel');
   $('settingsBtn')?.addEventListener('click', async () => {
     const st = await refreshTrialCache();
     refreshSubUI(st);
     updateAiStatus(getModelStatus());
+    try {
+      initModelSettings();
+    } catch {}
     panel?.classList.add('show');
   });
   $('settingsClose')?.addEventListener('click', () => panel?.classList.remove('show'));

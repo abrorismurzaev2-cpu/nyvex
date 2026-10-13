@@ -3,7 +3,8 @@
  * Web Worker + fallback, model status, model switch
  */
 import { MODEL, CDN, MODEL_ID } from '../core/config.js';
-import { isNativeApp, hasBundledModel, BUNDLED_MODEL_ROOT, BUNDLED_MODEL_ID } from '../core/platform.js';
+import { isNativeApp } from '../core/platform.js';
+import { getActiveModel, markModelDownloaded } from './models.js';
 import { isMobile, $ } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { saveProgressMeta, loadProgressMeta, clearProgressMeta } from './progress-store.js';
@@ -26,7 +27,7 @@ import {
   isStoragePersisted,
 } from './model-cache.js';
 
-export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted, hasBundledModel, isNativeApp };
+export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted, isNativeApp };
 
 let worker = null;
 let modelReady = false;
@@ -49,7 +50,6 @@ let lastProgressAt = 0;
 let statusListeners = [];
 
 let activeModelId = MODEL_ID;
-let useBundledModel = false;
 
 export function getActiveModelId() {
   return activeModelId;
@@ -264,6 +264,10 @@ function ensureWorker() {
         updateUI(msg);
       } else if (msg.type === 'loaded') {
         modelReady = true;
+      try {
+        const am = getActiveModel();
+        markModelDownloaded(am.id);
+      } catch {}
         loading = false;
         try { markModelReady(loadTotal || 900*1024*1024); } catch {}
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
@@ -426,26 +430,21 @@ export async function loadModel(modelId) {
   if (modelReady) return true;
   activeModelId = MODEL_ID;
 
-  let bundled = false;
-  try {
-    bundled = await hasBundledModel();
-    useBundledModel = bundled;
-  } catch {}
   const native = isNativeApp();
-  console.log('[nyvex] loadModel native=', native, 'bundled=', bundled);
+  const active = getActiveModel();
+  activeModelId = active.hfId || MODEL_ID;
+  console.log('[nyvex] loadModel native=', native, 'model=', active.id, activeModelId);
 
   try {
-    if (!bundled) {
-      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-      const et = conn && conn.effectiveType;
-      if (et === '2g' || et === 'slow-2g') {
-        const ok = window.confirm(
-          'Медленное соединение. Первый запуск AI ~900 МБ — рекомендуем Wi‑Fi.\n\nПродолжить загрузку?'
-        );
-        if (!ok) {
-          emitStatus();
-          return false;
-        }
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    const et = conn && conn.effectiveType;
+    if (et === '2g' || et === 'slow-2g') {
+      const ok = window.confirm(
+        'Медленное соединение. Первый запуск AI может занять время — рекомендуем Wi‑Fi.\n\nПродолжить загрузку?'
+      );
+      if (!ok) {
+        emitStatus();
+        return false;
       }
     }
   } catch {}
@@ -547,12 +546,13 @@ export async function loadModel(modelId) {
           }
         };
         w.addEventListener('message', onMsg);
+        const am = getActiveModel();
         w.postMessage({
           type: 'load',
           preferGpu,
-          modelId: useBundledModel ? BUNDLED_MODEL_ID : activeModelId,
-          local: !!useBundledModel,
-          localModelPath: BUNDLED_MODEL_ROOT,
+          modelId: am.hfId || activeModelId,
+          dtype: am.dtype || 'q4',
+          local: false,
         });
         setTimeout(() => {
           w.removeEventListener('message', onMsg);
@@ -576,27 +576,23 @@ export async function loadModel(modelId) {
 async function loadMainThread(preferGpu) {
   try {
     const { pipeline, env } = await import(/* @vite-ignore */ CDN.primary);
-    let useBundled = false;
-    try { useBundled = await hasBundledModel(); } catch {}
-    if (useBundled) {
-      env.allowLocalModels = true;
-      env.allowRemoteModels = false;
-      try { env.localModelPath = BUNDLED_MODEL_ROOT; } catch {}
-      activeModelId = BUNDLED_MODEL_ID;
-    } else {
-      env.allowLocalModels = false;
-      env.useBrowserCache = true;
-      try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
-    }
+    env.allowLocalModels = false;
+    env.useBrowserCache = true;
+    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
+    try {
+      const am = getActiveModel();
+      activeModelId = am.hfId || activeModelId;
+    } catch {}
     modelDevice = preferGpu ? 'WebGPU' : 'WASM';
 
     const progressMap = {};
     let lastTs = Date.now();
     let lastLoaded = 0;
 
+    const dtype = (getActiveModel().dtype) || MODEL.dtype || 'q4';
     mainGenerator = await pipeline(MODEL.task, activeModelId, {
       device: preferGpu ? 'webgpu' : 'wasm',
-      dtype: MODEL.dtype,
+      dtype,
       progress_callback: (p) => {
         if (cancelled) return;
         if (p.status === 'progress' && p.file) {
@@ -632,6 +628,10 @@ async function loadMainThread(preferGpu) {
     }
 
     modelReady = true;
+    try {
+      const am = getActiveModel();
+      markModelDownloaded(am.id);
+    } catch {}
     useWorker = false;
     loadPct = 100;
     updateUI({ status: 'done' });

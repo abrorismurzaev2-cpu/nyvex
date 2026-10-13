@@ -1,26 +1,19 @@
-# Встроенная модель в APK
+# Модели AI
+
+Модель **не встроена** в APK (из‑за проблем с локальным путём в WebView).
 
 ## Поведение
 
-| Платформа | Модель |
-|-----------|--------|
-| **Android APK** | Локально `assets/models/skjortan/MiniCPM5-1B-ONNX/` внутри APK |
-| **Веб / PWA** | Скачивание с HuggingFace + resume/кэш |
+1. Первый запуск → экран соглашения  
+2. Скачивание активной модели с HuggingFace (кэш браузера / WebView)  
+3. Повторный запуск — из Cache API  
 
-## Сборка
+## Каталог (`js/ai/models.js`)
 
-GitHub Actions при `assembleRelease`:
+| ID | Название | HF | Размер |
+|----|----------|-----|--------|
+| qwen-0.5b | Быстрая | onnx-community/Qwen2.5-0.5B-Instruct | ~350 МБ |
+| qwen-1.5b | Умная | onnx-community/Qwen2.5-1.5B-Instruct | ~900 МБ |
+| qwen-3b | Мощная | onnx-community/Qwen2.5-3B-Instruct | ~2.5 ГБ |
 
-1. `huggingface-cli` / `hf_hub_download` → `www/assets/models/...`
-2. `npx cap sync android` копирует в APK assets
-3. Артефакт + **GitHub Release** `nyvex-release.apk`
-
-Ссылка:
-
-https://github.com/abrorismurzaev2-cpu/nyvex/releases/latest/download/nyvex-release.apk
-
-## Размер
-
-~0.9–1.2 ГБ. RuStore допускает до 5 ГБ.
-
-Модель **не коммитится** в git (см. `.gitignore`).
+Переключение: Настройки → AI модель.

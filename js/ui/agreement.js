@@ -4,7 +4,7 @@
 import { showScreen } from '../core/router.js';
 import { toast } from '../core/toast.js';
 
-const KEY = 'nyvex_agreement_accepted_v1';
+const KEY = 'nyvex_agreement_v2';
 const KEY_DATE = 'nyvex_agreement_date';
 
 export function hasAcceptedAgreement() {

@@ -298,3 +298,118 @@
 }
 .model-card-meta { font-size: 12px; color: var(--dim); margin-bottom: 4px; }
 .model-card-stars { font-size: 11px; color: var(--dim-2); margin-bottom: 10px; }
+
+/* Model picker */
+.model-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 18px;
+  padding: 0 4px;
+}
+.model-item {
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  transition: border-color 0.25s, background 0.25s, box-shadow 0.25s;
+  position: relative;
+}
+.model-item.active {
+  border-color: rgba(124, 92, 255, 0.6);
+  background: rgba(124, 92, 255, 0.1);
+  box-shadow: 0 0 20px rgba(124, 92, 255, 0.15);
+}
+.model-item.active::before {
+  content: '✓';
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cff, #00d9ff);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.model-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 4px;
+  padding-right: 28px;
+}
+.model-desc {
+  font-size: 12.5px;
+  color: var(--dim, #a0a0b0);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+.model-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 11.5px;
+  color: var(--dim-2, #6a6a7a);
+  flex-wrap: wrap;
+}
+.model-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.model-btn {
+  padding: 8px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  color: var(--txt, #ececf1);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, opacity 0.2s;
+}
+.model-btn.primary {
+  background: linear-gradient(135deg, #7c5cff, #00d9ff);
+  border: none;
+  color: #fff;
+}
+.model-btn.danger {
+  color: #ff5c7a;
+  border-color: rgba(255, 92, 122, 0.3);
+}
+.model-btn:active {
+  transform: scale(0.97);
+}
+.model-active-label {
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 0;
+}
+.model-progress {
+  margin-top: 10px;
+  height: 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.model-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c5cff, #00d9ff);
+  transition: width 0.3s;
+  width: 0;
+}
+.model-progress-text {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--dim-2, #6a6a7a);
+  display: flex;
+  justify-content: space-between;
+}

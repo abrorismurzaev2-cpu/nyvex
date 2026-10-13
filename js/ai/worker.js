@@ -1,6 +1,6 @@
 /**
  * NYVEX — ai/worker.js
- * Web: HF + resume fetch. APK: local assets/models (no network).
+ * Always download/load from HuggingFace (browser cache). No local APK assets.
  */
 import { installResumeFetch } from './resume-fetch.js';
 
@@ -8,12 +8,11 @@ installResumeFetch();
 
 let pipeline;
 let env;
-let MODEL_ID = 'skjortan/MiniCPM5-1B-ONNX';
+let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+let DTYPE = 'q4';
 let generator = null;
 let device = 'wasm';
 let ready = false;
-let useLocal = false;
-let localModelPath = './assets/models/';
 
 const MIRRORS = ['https://huggingface.co', 'https://hf-mirror.com'];
 
@@ -31,9 +30,8 @@ function friendlyError(err) {
     return 'Ошибка сети при загрузке AI. Проверьте интернет / Wi‑Fi и повторите.';
   }
   if (/CORS|cross-origin/i.test(msg)) return 'Ошибка доступа к модели. Обновите страницу.';
-  if (/memory|out of memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки.';
+  if (/memory|out of memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки или выберите модель «Быстрая».';
   if (/WebGPU/i.test(msg)) return 'WebGPU недоступен, пробуем WASM…';
-  if (/local|not found|404/i.test(msg)) return 'Локальная модель не найдена в приложении.';
   return msg.slice(0, 180) || 'Не удалось загрузить AI';
 }
 
@@ -42,37 +40,19 @@ async function ensureTransformers() {
   const mod = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
   pipeline = mod.pipeline;
   env = mod.env;
-}
-
-function applyEnvLocal() {
-  env.allowLocalModels = true;
-  env.allowRemoteModels = false;
-  try {
-    env.localModelPath = localModelPath;
-  } catch {}
-  try {
-    env.useBrowserCache = false;
-  } catch {}
-}
-
-function applyEnvRemote() {
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
+  env.useBrowserCache = true;
   try {
-    env.useBrowserCache = true;
     env.cacheDir = 'nyvex-model-cache-v2';
   } catch {}
 }
 
 async function tryPipeline(dev, dt, remoteHost) {
   await ensureTransformers();
-  if (useLocal) applyEnvLocal();
-  else {
-    applyEnvRemote();
-    try {
-      if (remoteHost) env.remoteHost = remoteHost;
-    } catch {}
-  }
+  try {
+    if (remoteHost) env.remoteHost = remoteHost;
+  } catch {}
 
   const progressMap = {};
   let lastTs = Date.now();
@@ -91,37 +71,33 @@ async function tryPipeline(dev, dt, remoteHost) {
             total += progressMap[k].total || 0;
             loaded += progressMap[k].loaded || 0;
           }
-          if (!total) total = useLocal ? 1 : 900 * 1024 * 1024;
+          if (!total) total = 350 * 1024 * 1024;
           const now = Date.now();
           const dtSec = Math.max(0.25, (now - lastTs) / 1000);
           const speed = Math.max(0, (loaded - lastLoaded) / dtSec);
           lastTs = now;
           lastLoaded = loaded;
-          const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : (useLocal ? 50 : 0);
+          const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : 0;
           const remaining = speed > 0 && total > loaded ? (total - loaded) / speed : 0;
           post({
             type: 'progress',
             status: 'progress',
             loaded,
             total,
-            pct: useLocal ? Math.max(pct, 10) : pct,
-            speed: useLocal ? 0 : speed,
-            eta: useLocal ? 0 : remaining,
+            pct,
+            speed,
+            eta: remaining,
             file: String(p.file || '').split('/').pop(),
           });
         } else if (p.status === 'ready') {
-          post({ type: 'progress', status: 'ready', message: useLocal ? 'Инициализация локальной модели…' : 'Инициализация…', pct: 99 });
+          post({ type: 'progress', status: 'ready', message: 'Инициализация…', pct: 99 });
         } else if (p.status === 'done') {
-          post({ type: 'progress', status: useLocal ? 'from_cache' : 'from_cache', message: useLocal ? 'Локальная модель' : 'Из кэша', pct: 100 });
+          post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
         } else if (p.status === 'initiate' || p.status === 'download') {
           post({
             type: 'progress',
             status: 'init',
-            message: useLocal
-              ? 'Чтение модели из приложения…'
-              : p.file
-                ? String(p.file).split('/').pop()
-                : 'Скачивание…',
+            message: p.file ? String(p.file).split('/').pop() : 'Скачивание…',
           });
         }
       } catch (e) {
@@ -133,34 +109,29 @@ async function tryPipeline(dev, dt, remoteHost) {
 
 async function loadPipeline(preferGpu) {
   const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
-  // Prefer q4f16 (bundled default), then q4
-  const dtypes = ['q4f16', 'q4'];
+  const dtypes = DTYPE ? [DTYPE, 'q4', 'q4f16'] : ['q4', 'q4f16'];
+  // unique preserve order
+  const seen = new Set();
+  const dtypeList = dtypes.filter((d) => (seen.has(d) ? false : seen.add(d)));
   let lastErr = null;
 
-  const mirrors = useLocal ? [null] : MIRRORS;
-
-  for (const mirror of mirrors) {
+  for (const mirror of MIRRORS) {
     for (const dev of devices) {
-      for (const dt of dtypes) {
-        const retries = useLocal ? 2 : 4;
-        for (let retry = 0; retry < retries; retry++) {
+      for (const dt of dtypeList) {
+        for (let retry = 0; retry < 3; retry++) {
           try {
             post({
               type: 'progress',
               status: 'init',
-              message: useLocal
-                ? 'Загрузка AI из приложения…'
-                : retry
-                  ? 'Повтор ' + retry + '/3…'
-                  : 'Подключение…',
+              message: retry ? 'Повтор ' + retry + '/2…' : 'Подключение…',
             });
-            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, useLocal ? 'LOCAL' : mirror, 'retry', retry);
+            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, mirror, 'retry', retry);
             device = dev;
             generator = await tryPipeline(dev, dt, mirror);
             return;
           } catch (err) {
             lastErr = err;
-            console.error('[nyvex-worker] failed', dev, dt, err);
+            console.error('[nyvex-worker] failed', dev, dt, mirror, err);
             post({ type: 'progress', status: 'init', message: friendlyError(err) });
             generator = null;
             await sleep(Math.min(4000, 800 * Math.pow(2, retry)));
@@ -178,11 +149,10 @@ self.onmessage = async (e) => {
   try {
     if (type === 'load') {
       if (data.modelId) MODEL_ID = data.modelId;
-      useLocal = !!data.local;
-      if (data.localModelPath) localModelPath = data.localModelPath;
+      if (data.dtype) DTYPE = data.dtype;
       await loadPipeline(!!data.preferGpu);
       ready = true;
-      post({ type: 'loaded', device, id, local: useLocal });
+      post({ type: 'loaded', device, id, modelId: MODEL_ID });
       return;
     }
     if (type === 'generate') {
@@ -214,7 +184,7 @@ self.onmessage = async (e) => {
       post({ type: 'result', id, text: reply.trim() });
       return;
     }
-    if (type === 'ping') post({ type: 'pong', ready, device, local: useLocal });
+    if (type === 'ping') post({ type: 'pong', ready, device, modelId: MODEL_ID });
   } catch (err) {
     console.error('[nyvex-worker]', err);
     post({ type: 'error', id, message: friendlyError(err) });
