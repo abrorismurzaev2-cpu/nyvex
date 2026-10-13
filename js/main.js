@@ -3,6 +3,7 @@
  * No auth: loading → chat, device trial, model in background
  */
 import { initRouter, showScreen } from './core/router.js';
+import { hasAcceptedAgreement, setupAgreement } from './ui/agreement.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
 import { loadModel, cancelLoad, isModelReady, isLoading, getModelState } from './ai/loader.js';
@@ -93,6 +94,28 @@ async function boot() {
       console.warn('sub sync', e);
     }
 
+    // First-launch agreement (no chat / model until accepted)
+    if (!hasAcceptedAgreement()) {
+      showScreen('agreement');
+      setupAgreement(async () => {
+        await continueModelBoot();
+      });
+      return;
+    }
+
+    await continueModelBoot();
+  } catch (e) {
+    console.error('boot', e);
+    try {
+      enterApp();
+    } catch {
+      showScreen('app');
+    }
+  }
+}
+
+async function continueModelBoot() {
+  try {
     // Model splash: logo-only if cached, full progress if first download
     showScreen('loading');
     let modelState = 'not-downloaded';
@@ -208,7 +231,7 @@ async function boot() {
       } catch {}
     });
   } catch (e) {
-    console.error('boot', e);
+    console.error('continueModelBoot', e);
     try {
       enterApp();
     } catch {
@@ -216,6 +239,7 @@ async function boot() {
     }
   }
 }
+
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', boot);

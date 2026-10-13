@@ -1,10 +1,9 @@
 /**
  * NYVEX — ai/chat.js
- * Russian-only + Think mode + moderation
+ * Chat generation + Think mode (no content filters — local model, user responsibility)
  */
 import { MODEL, LIMITS } from '../core/config.js';
 import { isModelReady, generateViaWorker } from './loader.js';
-import { checkInput, checkOutput, isRussian, stripNonRussianNoise } from './moderation.js';
 
 const SYSTEM_THINK_PROMPT = `Ты — AI-ассистент NYVEX в режиме глубокого размышления.
 
@@ -19,14 +18,13 @@ const SYSTEM_THINK_PROMPT = `Ты — AI-ассистент NYVEX в режим�
 3. Формулирую вывод.
 </thinking>
 <answer>
-Краткий ответ на русском.
+Краткий ответ.
 </answer>
 
 ПРАВИЛА:
-- Только русский язык.
+- Отвечай в основном на русском языке.
 - В <thinking> — пошаговые рассуждения.
-- В <answer> — максимум 5 предложений.
-- Без мата, опасных советов и политики.`;
+- В <answer> — максимум 5 предложений.`;
 
 export function parseThinkingReply(raw) {
   const text = String(raw || '');
@@ -45,8 +43,8 @@ export function parseThinkingReply(raw) {
 
 function buildMessages(userText, history, system, deepThinking) {
   const userSuffix = deepThinking
-    ? '\n\n(Ответь в формате <thinking>...</thinking><answer>...</answer>, только на русском.)'
-    : '\n\n(Ответь строго на русском, кратко, 2–4 предложения.)';
+    ? '\n\n(Ответь в формате <thinking>...</thinking><answer>...</answer>.)'
+    : '\n\n(Ответь кратко, 2–4 предложения.)';
   return [
     { role: 'system', content: system },
     ...history.slice(-LIMITS.historyContext).map((m) => ({
@@ -62,11 +60,6 @@ function buildMessages(userText, history, system, deepThinking) {
 
 export async function generateReply(userText, history = [], opts = {}) {
   const deepThinking = !!opts.deepThinking;
-
-  const inputCheck = checkInput(userText);
-  if (inputCheck.blocked) {
-    return { answer: inputCheck.message, thinking: null, ms: 0, blocked: true };
-  }
 
   if (!isModelReady()) {
     return {
@@ -97,63 +90,12 @@ export async function generateReply(userText, history = [], opts = {}) {
       };
 
   const t0 = Date.now();
-  const fallback = 'Извините, произошла ошибка. Попробуйте переформулировать вопрос.';
+  const fallback = 'Извините, произошла ошибка. Попробуйте ещё раз.';
 
   try {
-    let messages = buildMessages(userText, history, system, deepThinking);
+    const messages = buildMessages(userText, history, system, deepThinking);
     let reply = String((await generateViaWorker(messages, genOpts)) || '').trim();
-
-    // Parse Think tags BEFORE stripping noise
-    let parsed = parseThinkingReply(reply);
-
-    // Clean answer / thinking
-    if (parsed.thinking) {
-      parsed.thinking = stripNonRussianNoise(parsed.thinking);
-    }
-    parsed.answer = stripNonRussianNoise(parsed.answer || '');
-
-    // Language retry on answer
-    if (parsed.answer && !isRussian(parsed.answer)) {
-      const hardSystem =
-        system +
-        '\nПОВТОР: отвечай ТОЛЬКО на русском. Первое слово — русское.';
-      messages = buildMessages(userText, history, hardSystem, deepThinking);
-      try {
-        const retry = String(
-          (await generateViaWorker(messages, {
-            ...genOpts,
-            temperature: 0.35,
-            max_new_tokens: deepThinking ? 300 : 120,
-          })) || ''
-        ).trim();
-        const p2 = parseThinkingReply(retry);
-        const cleaned = stripNonRussianNoise(p2.answer || retry);
-        if (cleaned && isRussian(cleaned)) {
-          parsed = {
-            thinking: p2.thinking ? stripNonRussianNoise(p2.thinking) : parsed.thinking,
-            answer: cleaned,
-          };
-        } else {
-          parsed.answer = fallback;
-          parsed.thinking = null;
-        }
-      } catch {
-        parsed.answer = fallback;
-        parsed.thinking = null;
-      }
-    }
-
-    // Output moderation
-    const out = checkOutput(parsed.answer);
-    if (out.blocked) {
-      return { answer: out.message, thinking: null, ms: Date.now() - t0, blocked: true };
-    }
-    if (parsed.thinking) {
-      const th = checkOutput(parsed.thinking);
-      if (th.blocked) parsed.thinking = null;
-    }
-
-    // If Think was ON but model ignored tags — still OK (answer only)
+    const parsed = parseThinkingReply(reply);
     return {
       answer: parsed.answer || fallback,
       thinking: deepThinking ? parsed.thinking : null,

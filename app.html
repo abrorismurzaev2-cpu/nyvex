@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/chat.css">
   <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/agreement.css">
 </head>
 <body>
   <!-- LOADING -->
@@ -58,6 +59,55 @@
   </div>
 
   <!-- APP -->
+
+  <!-- AGREEMENT (first launch) -->
+  <div class="screen" id="screen-agreement">
+    <div class="agreement-card">
+      <div class="agreement-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
+          <path d="M12 3 L12 21"/>
+          <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+        </svg>
+      </div>
+      <h2>Прежде чем начать</h2>
+      <div class="agreement-text">
+        <p><b>NYVEX использует искусственный интеллект.</b></p>
+        <p>AI-модель работает <b>локально на вашем устройстве</b>.
+        Мы не проверяем, не фильтруем и не храним ваши запросы
+        и ответы модели.</p>
+        <p>Вы <b>самостоятельно несёте ответственность</b> за:</p>
+        <ul>
+          <li>Использование сгенерированного контента</li>
+          <li>Проверку достоверности ответов</li>
+          <li>Соблюдение законов вашей страны</li>
+          <li>Использование AI в личных и рабочих целях</li>
+        </ul>
+        <p>AI может ошибаться. <b>Не используйте ответы модели</b> как
+        медицинские, юридические, финансовые или иные профессиональные
+        консультации.</p>
+        <p>Продолжая, вы подтверждаете что:</p>
+        <ul>
+          <li>Вам <b>13 лет или больше</b></li>
+          <li>Вы принимаете <a href="legal/terms.html" target="_blank" rel="noopener">Условия использования</a></li>
+          <li>Вы согласны с <a href="legal/privacy.html" target="_blank" rel="noopener">Политикой конфиденциальности</a></li>
+        </ul>
+      </div>
+      <label class="agreement-checkbox">
+        <input type="checkbox" id="agreeCheckbox" />
+        <span class="agreement-box"></span>
+        <span>Я прочитал и согласен с условиями</span>
+      </label>
+      <button type="button" class="agreement-btn" id="agreeBtn" disabled>
+        Принять и продолжить
+      </button>
+      <div class="agreement-footer">
+        Не хотите соглашаться?
+        <a href="legal/terms.html" target="_blank" rel="noopener">Прочитайте условия</a>
+      </div>
+    </div>
+  </div>
+
   <div class="screen" id="screen-app">
     <div class="sb-overlay" id="sbOverlay"></div>
 

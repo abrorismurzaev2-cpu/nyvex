@@ -1,0 +1,158 @@
+#screen-agreement {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-bottom: calc(20px + var(--safe-bottom, 0px));
+  background: var(--bg, #0a0a0f);
+  overflow-y: auto;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+}
+#screen-agreement.active {
+  display: flex;
+}
+
+.agreement-card {
+  width: 100%;
+  max-width: 520px;
+  padding: 32px 28px;
+  border-radius: 22px;
+  background: var(--bg-2, #14141a);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  animation: agreementCardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes agreementCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+.agreement-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #7c5cff, #00d9ff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 22px;
+  box-shadow: 0 16px 40px rgba(124, 92, 255, 0.4);
+}
+.agreement-icon svg {
+  width: 34px;
+  height: 34px;
+  color: #fff;
+}
+
+.agreement-card h2 {
+  font-size: 22px;
+  font-weight: 700;
+  text-align: center;
+  margin: 0 0 20px;
+  color: #fff;
+}
+
+.agreement-text {
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--dim, #a0a0b0);
+  margin-bottom: 22px;
+}
+.agreement-text p { margin: 0 0 12px; }
+.agreement-text b { color: #fff; }
+.agreement-text ul {
+  margin: 10px 0 14px 20px;
+  padding: 0;
+}
+.agreement-text li { margin-bottom: 6px; }
+.agreement-text a {
+  color: #00d9ff;
+  text-decoration: underline;
+}
+
+.agreement-checkbox {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line, rgba(255, 255, 255, 0.08));
+  cursor: pointer;
+  user-select: none;
+  transition: border-color 0.2s;
+}
+.agreement-checkbox:hover {
+  border-color: rgba(124, 92, 255, 0.4);
+}
+.agreement-checkbox input { display: none; }
+.agreement-box {
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s;
+  position: relative;
+}
+.agreement-box::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 6L9 17l-5-5'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(0.5);
+  transition: all 0.25s;
+}
+.agreement-checkbox input:checked ~ .agreement-box {
+  background: linear-gradient(135deg, #7c5cff, #00d9ff);
+  border-color: transparent;
+}
+.agreement-checkbox input:checked ~ .agreement-box::after {
+  opacity: 1;
+  transform: scale(1);
+}
+.agreement-checkbox span:last-child {
+  font-size: 13.5px;
+  color: var(--txt, #ececf1);
+  line-height: 1.5;
+}
+
+.agreement-btn {
+  width: 100%;
+  padding: 16px;
+  border-radius: 14px;
+  border: none;
+  background: linear-gradient(135deg, #7c5cff, #00d9ff);
+  color: #fff;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.25s, box-shadow 0.25s, opacity 0.2s;
+  box-shadow: 0 12px 32px rgba(124, 92, 255, 0.4);
+}
+.agreement-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+.agreement-btn:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.agreement-footer {
+  margin-top: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--dim-2, #6a6a7a);
+}
+.agreement-footer a { color: #00d9ff; }
