@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Patch Capacitor android/app/build.gradle for release signing."""
+"""Patch Capacitor android/app/build.gradle for release signing + large onnx assets."""
 from pathlib import Path
 import os
 import re
@@ -8,7 +8,6 @@ gradle = Path("android/app/build.gradle")
 t = gradle.read_text()
 store_file = str(Path(os.environ["GITHUB_WORKSPACE"]) / "nyvex-release.keystore").replace("\\", "/")
 
-# Remove any broken previous injection
 t = re.sub(r"\n\s*signingConfigs\s*\{[\s\S]*?\n\s*\}\n", "\n", t)
 
 signing_block = f"""
@@ -33,13 +32,12 @@ if "signingConfigs" not in t:
             count=1,
         )
 
-# Fix release buildType carefully: only inside buildTypes
+
 def patch_build_types(text):
     m = re.search(r"buildTypes\s*\{", text)
     if not m:
         return text
     start = m.end()
-    # find matching close of buildTypes
     depth = 1
     i = start
     while i < len(text) and depth:
@@ -57,7 +55,6 @@ def patch_build_types(text):
             signingConfig signingConfigs.release
         }
 """
-    # replace release { ... } in this block only
     block2, n = re.subn(
         r"release\s*\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}",
         release_body.strip(),
@@ -68,7 +65,19 @@ def patch_build_types(text):
         block2 = release_body + block
     return text[:start] + block2 + text[i - 1 :]
 
+
 t = patch_build_types(t)
+
+if "noCompress" not in t:
+    inject = """
+    aaptOptions {
+        noCompress 'onnx', 'bin'
+    }
+    androidResources {
+        noCompress += ['onnx', 'bin']
+    }
+"""
+    t = re.sub(r"(android\s*\{)", r"\1\n" + inject, t, count=1)
 
 pr = Path("android/app/proguard-rules.pro")
 if not pr.exists():
@@ -78,5 +87,15 @@ if not pr.exists():
     )
 
 gradle.write_text(t)
-print("--- file ---")
-print(t)
+print("Patched", gradle)
+
+props = Path("android/gradle.properties")
+if props.exists():
+    pt = props.read_text()
+    line = "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g -XX:+HeapDumpOnOutOfMemoryError -Dfile.encoding=UTF-8"
+    if "org.gradle.jvmargs" in pt:
+        pt = re.sub(r"org\.gradle\.jvmargs=.*", line, pt)
+    else:
+        pt += "\n" + line + "\n"
+    props.write_text(pt)
+    print("Patched", props)

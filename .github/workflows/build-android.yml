@@ -128,7 +128,8 @@ jobs:
           fi
           cd android
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon
+          echo "org.gradle.jvmargs=-Xmx6g -XX:MaxMetaspaceSize=1g" >> gradle.properties
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: Verify release APK
         run: |
