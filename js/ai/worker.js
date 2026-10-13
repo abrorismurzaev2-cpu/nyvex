@@ -1,17 +1,13 @@
 /**
  * NYVEX — ai/worker.js
- * Load + generate off main thread. Retries + mirror fallback.
+ * Resume download + retries + mirrors + generation
  */
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+import { installResumeFetch } from './resume-fetch.js';
 
-env.allowLocalModels = false;
-env.allowRemoteModels = true;
-env.useBrowserCache = true;
-// New cache bucket so old broken partial downloads are not reused
-try {
-  env.cacheDir = 'nyvex-model-cache-v2';
-} catch {}
+installResumeFetch();
 
+let pipeline;
+let env;
 let MODEL_ID = 'skjortan/MiniCPM5-1B-ONNX';
 let generator = null;
 let device = 'wasm';
@@ -29,22 +25,30 @@ function sleep(ms) {
 
 function friendlyError(err) {
   const msg = String(err?.message || err || '');
-  if (/network|fetch|Failed to fetch|Load failed|TypeError/i.test(msg)) {
+  if (/network|fetch|Failed to fetch|Load failed|TypeError|HTTP /i.test(msg)) {
     return 'Ошибка сети при загрузке AI. Проверьте интернет / Wi‑Fi и повторите.';
   }
-  if (/CORS|cross-origin/i.test(msg)) {
-    return 'Ошибка доступа к модели. Обновите страницу.';
-  }
-  if (/memory|out of memory|OOM/i.test(msg)) {
-    return 'Недостаточно памяти. Закройте другие вкладки.';
-  }
-  if (/WebGPU/i.test(msg)) {
-    return 'WebGPU недоступен, пробуем WASM…';
-  }
+  if (/CORS|cross-origin/i.test(msg)) return 'Ошибка доступа к модели. Обновите страницу.';
+  if (/memory|out of memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки.';
+  if (/WebGPU/i.test(msg)) return 'WebGPU недоступен, пробуем WASM…';
   return msg.slice(0, 180) || 'Не удалось загрузить AI';
 }
 
+async function ensureTransformers() {
+  if (pipeline) return;
+  const mod = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+  pipeline = mod.pipeline;
+  env = mod.env;
+  env.allowLocalModels = false;
+  env.allowRemoteModels = true;
+  env.useBrowserCache = true;
+  try {
+    env.cacheDir = 'nyvex-model-cache-v2';
+  } catch {}
+}
+
 async function tryPipeline(dev, dt, remoteHost) {
+  await ensureTransformers();
   try {
     if (remoteHost) env.remoteHost = remoteHost;
   } catch {}
@@ -58,7 +62,6 @@ async function tryPipeline(dev, dt, remoteHost) {
     dtype: dt,
     progress_callback: (p) => {
       try {
-        if (p.file) console.log('[nyvex-worker]', p.status, p.file, p.loaded, p.total);
         if (p.status === 'progress' && p.file) {
           progressMap[p.file] = { loaded: p.loaded || 0, total: p.total || 0 };
           let total = 0;
@@ -104,37 +107,29 @@ async function tryPipeline(dev, dt, remoteHost) {
 }
 
 async function loadPipeline(preferGpu) {
-  // Prefer WebGPU when available, else WASM; dtype q4f16 then q4
   const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
   const dtypes = ['q4f16', 'q4'];
   let lastErr = null;
-  let attempt = 0;
 
   for (const mirror of MIRRORS) {
     for (const dev of devices) {
       for (const dt of dtypes) {
         for (let retry = 0; retry < 4; retry++) {
-          attempt++;
           try {
             post({
               type: 'progress',
               status: 'init',
-              message: retry ? `Повтор ${retry}/3…` : `Подключение…`,
+              message: retry ? 'Повтор ' + retry + '/3…' : 'Подключение…',
             });
-            console.log('[nyvex-worker] load attempt', attempt, MODEL_ID, dev, dt, mirror);
+            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, mirror, 'retry', retry);
             device = dev;
             generator = await tryPipeline(dev, dt, mirror);
             return;
           } catch (err) {
             lastErr = err;
-            console.error('[nyvex-worker] failed', attempt, dev, dt, mirror, err);
-            post({
-              type: 'progress',
-              status: 'init',
-              message: friendlyError(err),
-            });
+            console.error('[nyvex-worker] failed', dev, dt, mirror, err);
+            post({ type: 'progress', status: 'init', message: friendlyError(err) });
             generator = null;
-            // Exponential backoff: 1s, 2s, 4s, 6s
             await sleep(Math.min(6000, 1000 * Math.pow(2, retry)));
           }
         }

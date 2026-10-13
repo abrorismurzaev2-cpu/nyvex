@@ -54,8 +54,8 @@ export async function generateReply(userText, history = [], opts = {}) {
   if (opts.deepThinking) system += '\n' + MODEL.thinkingSystemAdd;
 
   const genOpts = {
-    max_new_tokens: opts.deepThinking ? 280 : MODEL.maxNewTokens,
-    temperature: MODEL.temperature,
+    max_new_tokens: opts.deepThinking ? 500 : MODEL.maxNewTokens,
+    temperature: opts.deepThinking ? 0.7 : MODEL.temperature,
     top_p: MODEL.topP,
     top_k: MODEL.topK,
     repetition_penalty: MODEL.repetitionPenalty,

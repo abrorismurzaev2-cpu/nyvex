@@ -330,17 +330,23 @@ function touchStallWatch() {
   stallTimer = setTimeout(() => {
     if (modelReady || !loading) return;
     const idle = Date.now() - (lastProgressAt || Date.now());
-    if (idle >= 60000) {
-      loadError = 'Нет прогресса 60 сек. Проверьте интернет / Wi‑Fi.';
-      const st = $('loadStatus');
-      const det = $('loadDetail');
-      if (st) st.textContent = 'Ошибка сети';
-      if (det) det.textContent = loadError;
-      const retry = $('retryLoadBtn');
+    const live = document.getElementById('loadLiveMeta');
+    const retry = $('retryLoadBtn');
+    if (idle >= 120000) {
+      loadError = 'Нет прогресса 2 мин. Проверьте интернет.';
+      if (live) { live.textContent = loadError; live.style.opacity = '1'; }
       if (retry) retry.style.display = '';
       emitStatus();
+    } else if (idle >= 30000) {
+      if (live) {
+        live.textContent = 'Проблема с сетью? Подождите или нажмите «Повторить»';
+        live.style.opacity = '1';
+      }
+      if (retry) retry.style.display = '';
+      // keep watching
+      touchStallWatch();
     }
-  }, 62000);
+  }, 15000);
 }
 
 function friendlyLoadError(err) {
@@ -446,7 +452,7 @@ export async function loadModel(modelId) {
       const live = document.getElementById('loadLiveMeta');
       if (live) {
         live.textContent =
-          'Продолжаем загрузку с ' + Math.round(prev.percent) + '% · Cache API подхватит файлы';
+          'Продолжаем с ' + Math.round(prev.percent) + '% · докачка с места остановки';
         live.style.opacity = '1';
       }
     }

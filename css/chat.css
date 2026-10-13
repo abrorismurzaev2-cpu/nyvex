@@ -1157,3 +1157,14 @@
   background: linear-gradient(90deg, #7c5cff, #00d9ff);
   transition: width 0.3s ease;
 }
+
+.think-toggle {
+  position: relative;
+  z-index: 5;
+  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.think-toggle.on {
+  box-shadow: 0 0 0 1px rgba(124, 92, 255, 0.35);
+}

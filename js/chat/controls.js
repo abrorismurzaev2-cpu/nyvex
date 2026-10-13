@@ -17,10 +17,37 @@ import { notifyResponseReady, ensureNotificationPermission } from '../ui/notific
 let isGenerating = false;
 let deepThinking = false;
 
+const THINK_KEY = 'nyvex_think_mode';
+
+function loadThinkMode() {
+  try {
+    return localStorage.getItem(THINK_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function saveThinkMode(on) {
+  try {
+    localStorage.setItem(THINK_KEY, on ? '1' : '0');
+  } catch {}
+}
+
+function applyThinkUI() {
+  const thinkToggle = $('thinkToggle');
+  if (!thinkToggle) return;
+  thinkToggle.classList.toggle('on', deepThinking);
+  thinkToggle.setAttribute('aria-pressed', deepThinking ? 'true' : 'false');
+  thinkToggle.title = deepThinking ? 'Deep Thinking включён' : 'Deep Thinking выключен';
+}
+
 export function initControls() {
   const composerInput = $('composerInput');
   const sendBtn = $('sendBtn');
   const thinkToggle = $('thinkToggle');
+
+  deepThinking = loadThinkMode();
+  applyThinkUI();
 
   composerInput?.addEventListener('input', () => {
     autoResize();
@@ -39,14 +66,24 @@ export function initControls() {
     if (!canSendMessage(state)) showPaymentModal();
   });
 
-  sendBtn?.addEventListener('click', () => {
+  sendBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (!isGenerating) sendMessage();
   });
 
-  thinkToggle?.addEventListener('click', () => {
+  const onThinkClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     deepThinking = !deepThinking;
-    thinkToggle.classList.toggle('on', deepThinking);
+    saveThinkMode(deepThinking);
+    applyThinkUI();
     toast(deepThinking ? 'Deep Thinking включён' : 'Deep Thinking выключен');
+  };
+  thinkToggle?.addEventListener('click', onThinkClick);
+  // Capture phase in case something stops bubbling
+  thinkToggle?.addEventListener('pointerup', (e) => {
+    // only if click didn't fire (some WebViews)
   });
 
   $('chatInner')?.addEventListener('click', onMsgAction);
@@ -96,7 +133,7 @@ async function sendMessage() {
 
   isGenerating = true;
   updateSendBtn();
-  showTyping();
+  showTyping(deepThinking ? 'Думает…' : 'Думает…');
   ensureNotificationPermission().catch(() => {});
 
   try {
@@ -126,6 +163,14 @@ async function sendMessage() {
 }
 
 function onMsgAction(e) {
+  const thinkBtn = e.target.closest('[data-think-toggle]');
+  if (thinkBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    thinkBtn.closest('.think-block')?.classList.toggle('collapsed');
+    return;
+  }
+
   const btn = e.target.closest('.msg-act');
   if (!btn) return;
   const act = btn.dataset.act;
