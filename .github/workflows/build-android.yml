@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -23,6 +26,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
       - name: Install dependencies
         run: |
           npm install
@@ -31,14 +39,63 @@ jobs:
       - name: Prepare webDir
         run: |
           mkdir -p www
-          rsync -a --exclude node_modules --exclude android --exclude .git --exclude www --exclude .github --exclude downloads ./ www/
+          rsync -a --exclude node_modules --exclude android --exclude .git --exclude www --exclude .github --exclude downloads --exclude '*.apk' ./ www/
           cp www/app.html www/index.html
           echo "webDir ready"
+
+      - name: Download AI model into web assets (APK bundle)
+        run: |
+          pip install -q "huggingface_hub>=0.23"
+          MODEL_DIR="www/assets/models/skjortan/MiniCPM5-1B-ONNX"
+          mkdir -p "$MODEL_DIR/onnx"
+          python3 - <<'PY'
+          from huggingface_hub import hf_hub_download
+          import shutil, os
+          repo = "skjortan/MiniCPM5-1B-ONNX"
+          dest = "www/assets/models/skjortan/MiniCPM5-1B-ONNX"
+          os.makedirs(os.path.join(dest, "onnx"), exist_ok=True)
+          files = [
+            "config.json",
+            "tokenizer.json",
+            "tokenizer_config.json",
+            "special_tokens_map.json",
+            "generation_config.json",
+            "onnx/model_q4f16.onnx",
+          ]
+          for f in files:
+            print("Downloading", f)
+            path = hf_hub_download(repo_id=repo, filename=f)
+            out = os.path.join(dest, f)
+            os.makedirs(os.path.dirname(out), exist_ok=True)
+            shutil.copy2(path, out)
+            print(" ->", out, os.path.getsize(out))
+          print("Model ready")
+          PY
+          echo "=== Model tree ==="
+          find www/assets/models -type f | head -50
+          du -sh www/assets/models
 
       - name: Init Capacitor Android
         run: |
           npx cap add android || true
           npx cap sync android
+
+      - name: Verify model in Android assets
+        run: |
+          set -e
+          BASE="android/app/src/main/assets/public"
+          # Capacitor may nest differently
+          echo "Listing public assets..."
+          find android/app/src/main/assets -name "config.json" 2>/dev/null | head -20 || true
+          find android/app/src/main/assets -name "*.onnx" 2>/dev/null | head -10 || true
+          ONNX=$(find android/app/src/main/assets -name "model_q4f16.onnx" 2>/dev/null | head -n 1)
+          if [ -z "$ONNX" ]; then
+            echo "::error::model_q4f16.onnx not found inside Android assets after cap sync"
+            find android/app/src/main/assets -type f | head -80
+            exit 1
+          fi
+          ls -lh "$ONNX"
+          echo "Bundled model OK"
 
       - name: Apply icons and version
         run: |
@@ -78,9 +135,15 @@ jobs:
           set -e
           APK=$(find android/app/build/outputs/apk -name "*.apk" | head -n 1)
           echo "APK=$APK"
-          ls -laR android/app/build/outputs/apk || true
+          ls -lah "$APK"
           test -n "$APK" && test -f "$APK"
           cp "$APK" "$GITHUB_WORKSPACE/nyvex-release.apk"
+          # Size should be large if model embedded (>200MB)
+          SIZE=$(stat -c%s "$GITHUB_WORKSPACE/nyvex-release.apk")
+          echo "APK bytes=$SIZE"
+          if [ "$SIZE" -lt 200000000 ]; then
+            echo "::warning::APK smaller than 200MB — model may be missing"
+          fi
           jarsigner -verify -verbose -certs "$GITHUB_WORKSPACE/nyvex-release.apk" | tee /tmp/verify.txt
           grep -qi "jar verified" /tmp/verify.txt
           if grep -qi "CN=Android Debug" /tmp/verify.txt; then
@@ -88,12 +151,30 @@ jobs:
             exit 1
           fi
 
-      - name: Upload release APK
+      - name: Upload release APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: nyvex-release-apk
           path: nyvex-release.apk
           retention-days: 30
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-v${{ github.run_number }}
+          name: NYVEX Android ${{ github.run_number }}
+          body: |
+            Release APK with **bundled on-device AI model** (~1 GB download).
+
+            - No model download after install
+            - Web version still loads model from HuggingFace on first run
+
+            Install over previous version. Wi‑Fi recommended.
+          files: nyvex-release.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cleanup keystore
         if: always()

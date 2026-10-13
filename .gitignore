@@ -25,3 +25,8 @@ config.local.*
 .vercel
 www/
 out/
+
+# Bundled AI model (downloaded in CI, not committed)
+assets/models/
+www/assets/models/
+*.onnx

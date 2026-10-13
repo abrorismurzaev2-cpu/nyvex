@@ -1,6 +1,6 @@
 /**
  * NYVEX — ai/worker.js
- * Resume download + retries + mirrors + generation
+ * Web: HF + resume fetch. APK: local assets/models (no network).
  */
 import { installResumeFetch } from './resume-fetch.js';
 
@@ -12,6 +12,8 @@ let MODEL_ID = 'skjortan/MiniCPM5-1B-ONNX';
 let generator = null;
 let device = 'wasm';
 let ready = false;
+let useLocal = false;
+let localModelPath = './assets/models/';
 
 const MIRRORS = ['https://huggingface.co', 'https://hf-mirror.com'];
 
@@ -31,6 +33,7 @@ function friendlyError(err) {
   if (/CORS|cross-origin/i.test(msg)) return 'Ошибка доступа к модели. Обновите страницу.';
   if (/memory|out of memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки.';
   if (/WebGPU/i.test(msg)) return 'WebGPU недоступен, пробуем WASM…';
+  if (/local|not found|404/i.test(msg)) return 'Локальная модель не найдена в приложении.';
   return msg.slice(0, 180) || 'Не удалось загрузить AI';
 }
 
@@ -39,19 +42,37 @@ async function ensureTransformers() {
   const mod = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
   pipeline = mod.pipeline;
   env = mod.env;
+}
+
+function applyEnvLocal() {
+  env.allowLocalModels = true;
+  env.allowRemoteModels = false;
+  try {
+    env.localModelPath = localModelPath;
+  } catch {}
+  try {
+    env.useBrowserCache = false;
+  } catch {}
+}
+
+function applyEnvRemote() {
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
-  env.useBrowserCache = true;
   try {
+    env.useBrowserCache = true;
     env.cacheDir = 'nyvex-model-cache-v2';
   } catch {}
 }
 
 async function tryPipeline(dev, dt, remoteHost) {
   await ensureTransformers();
-  try {
-    if (remoteHost) env.remoteHost = remoteHost;
-  } catch {}
+  if (useLocal) applyEnvLocal();
+  else {
+    applyEnvRemote();
+    try {
+      if (remoteHost) env.remoteHost = remoteHost;
+    } catch {}
+  }
 
   const progressMap = {};
   let lastTs = Date.now();
@@ -70,33 +91,37 @@ async function tryPipeline(dev, dt, remoteHost) {
             total += progressMap[k].total || 0;
             loaded += progressMap[k].loaded || 0;
           }
-          if (!total) total = 900 * 1024 * 1024;
+          if (!total) total = useLocal ? 1 : 900 * 1024 * 1024;
           const now = Date.now();
           const dtSec = Math.max(0.25, (now - lastTs) / 1000);
           const speed = Math.max(0, (loaded - lastLoaded) / dtSec);
           lastTs = now;
           lastLoaded = loaded;
-          const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : 0;
+          const pct = total > 0 ? Math.min(99, (loaded / total) * 100) : (useLocal ? 50 : 0);
           const remaining = speed > 0 && total > loaded ? (total - loaded) / speed : 0;
           post({
             type: 'progress',
             status: 'progress',
             loaded,
             total,
-            pct,
-            speed,
-            eta: remaining,
+            pct: useLocal ? Math.max(pct, 10) : pct,
+            speed: useLocal ? 0 : speed,
+            eta: useLocal ? 0 : remaining,
             file: String(p.file || '').split('/').pop(),
           });
         } else if (p.status === 'ready') {
-          post({ type: 'progress', status: 'ready', message: 'Инициализация…', pct: 99 });
+          post({ type: 'progress', status: 'ready', message: useLocal ? 'Инициализация локальной модели…' : 'Инициализация…', pct: 99 });
         } else if (p.status === 'done') {
-          post({ type: 'progress', status: 'from_cache', message: 'Из кэша', pct: 100 });
+          post({ type: 'progress', status: useLocal ? 'from_cache' : 'from_cache', message: useLocal ? 'Локальная модель' : 'Из кэша', pct: 100 });
         } else if (p.status === 'initiate' || p.status === 'download') {
           post({
             type: 'progress',
             status: 'init',
-            message: p.file ? String(p.file).split('/').pop() : 'Скачивание…',
+            message: useLocal
+              ? 'Чтение модели из приложения…'
+              : p.file
+                ? String(p.file).split('/').pop()
+                : 'Скачивание…',
           });
         }
       } catch (e) {
@@ -108,29 +133,37 @@ async function tryPipeline(dev, dt, remoteHost) {
 
 async function loadPipeline(preferGpu) {
   const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
+  // Prefer q4f16 (bundled default), then q4
   const dtypes = ['q4f16', 'q4'];
   let lastErr = null;
 
-  for (const mirror of MIRRORS) {
+  const mirrors = useLocal ? [null] : MIRRORS;
+
+  for (const mirror of mirrors) {
     for (const dev of devices) {
       for (const dt of dtypes) {
-        for (let retry = 0; retry < 4; retry++) {
+        const retries = useLocal ? 2 : 4;
+        for (let retry = 0; retry < retries; retry++) {
           try {
             post({
               type: 'progress',
               status: 'init',
-              message: retry ? 'Повтор ' + retry + '/3…' : 'Подключение…',
+              message: useLocal
+                ? 'Загрузка AI из приложения…'
+                : retry
+                  ? 'Повтор ' + retry + '/3…'
+                  : 'Подключение…',
             });
-            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, mirror, 'retry', retry);
+            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, useLocal ? 'LOCAL' : mirror, 'retry', retry);
             device = dev;
             generator = await tryPipeline(dev, dt, mirror);
             return;
           } catch (err) {
             lastErr = err;
-            console.error('[nyvex-worker] failed', dev, dt, mirror, err);
+            console.error('[nyvex-worker] failed', dev, dt, err);
             post({ type: 'progress', status: 'init', message: friendlyError(err) });
             generator = null;
-            await sleep(Math.min(6000, 1000 * Math.pow(2, retry)));
+            await sleep(Math.min(4000, 800 * Math.pow(2, retry)));
           }
         }
       }
@@ -145,9 +178,11 @@ self.onmessage = async (e) => {
   try {
     if (type === 'load') {
       if (data.modelId) MODEL_ID = data.modelId;
+      useLocal = !!data.local;
+      if (data.localModelPath) localModelPath = data.localModelPath;
       await loadPipeline(!!data.preferGpu);
       ready = true;
-      post({ type: 'loaded', device, id });
+      post({ type: 'loaded', device, id, local: useLocal });
       return;
     }
     if (type === 'generate') {
@@ -179,7 +214,7 @@ self.onmessage = async (e) => {
       post({ type: 'result', id, text: reply.trim() });
       return;
     }
-    if (type === 'ping') post({ type: 'pong', ready, device });
+    if (type === 'ping') post({ type: 'pong', ready, device, local: useLocal });
   } catch (err) {
     console.error('[nyvex-worker]', err);
     post({ type: 'error', id, message: friendlyError(err) });

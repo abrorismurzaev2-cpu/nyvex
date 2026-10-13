@@ -3,6 +3,7 @@
  * Web Worker + fallback, model status, model switch
  */
 import { MODEL, CDN, MODEL_ID } from '../core/config.js';
+import { isNativeApp, hasBundledModel, BUNDLED_MODEL_ROOT, BUNDLED_MODEL_ID } from '../core/platform.js';
 import { isMobile, $ } from '../core/utils.js';
 import { toast } from '../core/toast.js';
 import { saveProgressMeta, loadProgressMeta, clearProgressMeta } from './progress-store.js';
@@ -25,7 +26,7 @@ import {
   isStoragePersisted,
 } from './model-cache.js';
 
-export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted };
+export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted, hasBundledModel, isNativeApp };
 
 let worker = null;
 let modelReady = false;
@@ -48,6 +49,7 @@ let lastProgressAt = 0;
 let statusListeners = [];
 
 let activeModelId = MODEL_ID;
+let useBundledModel = false;
 
 export function getActiveModelId() {
   return activeModelId;
@@ -424,16 +426,26 @@ export async function loadModel(modelId) {
   if (modelReady) return true;
   activeModelId = MODEL_ID;
 
+  let bundled = false;
   try {
-    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    const et = conn && conn.effectiveType;
-    if (et === '2g' || et === 'slow-2g') {
-      const ok = window.confirm(
-        'Медленное соединение. Первый запуск AI ~900 МБ — рекомендуем Wi‑Fi.\n\nПродолжить загрузку?'
-      );
-      if (!ok) {
-        emitStatus();
-        return false;
+    bundled = await hasBundledModel();
+    useBundledModel = bundled;
+  } catch {}
+  const native = isNativeApp();
+  console.log('[nyvex] loadModel native=', native, 'bundled=', bundled);
+
+  try {
+    if (!bundled) {
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const et = conn && conn.effectiveType;
+      if (et === '2g' || et === 'slow-2g') {
+        const ok = window.confirm(
+          'Медленное соединение. Первый запуск AI ~900 МБ — рекомендуем Wi‑Fi.\n\nПродолжить загрузку?'
+        );
+        if (!ok) {
+          emitStatus();
+          return false;
+        }
       }
     }
   } catch {}
@@ -535,7 +547,13 @@ export async function loadModel(modelId) {
           }
         };
         w.addEventListener('message', onMsg);
-        w.postMessage({ type: 'load', preferGpu, modelId: activeModelId });
+        w.postMessage({
+          type: 'load',
+          preferGpu,
+          modelId: useBundledModel ? BUNDLED_MODEL_ID : activeModelId,
+          local: !!useBundledModel,
+          localModelPath: BUNDLED_MODEL_ROOT,
+        });
         setTimeout(() => {
           w.removeEventListener('message', onMsg);
           if (!modelReady) resolve(false);
@@ -558,9 +576,18 @@ export async function loadModel(modelId) {
 async function loadMainThread(preferGpu) {
   try {
     const { pipeline, env } = await import(/* @vite-ignore */ CDN.primary);
-    env.allowLocalModels = false;
-    env.useBrowserCache = true;
-    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
+    let useBundled = false;
+    try { useBundled = await hasBundledModel(); } catch {}
+    if (useBundled) {
+      env.allowLocalModels = true;
+      env.allowRemoteModels = false;
+      try { env.localModelPath = BUNDLED_MODEL_ROOT; } catch {}
+      activeModelId = BUNDLED_MODEL_ID;
+    } else {
+      env.allowLocalModels = false;
+      env.useBrowserCache = true;
+      try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
+    }
     modelDevice = preferGpu ? 'WebGPU' : 'WASM';
 
     const progressMap = {};

@@ -6,6 +6,7 @@ import { initRouter, showScreen } from './core/router.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
 import { loadModel, cancelLoad, isModelReady, isLoading, getModelState } from './ai/loader.js';
+import { isNativeApp, hasBundledModel } from './core/platform.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
 import { initSidebar } from './ui/sidebar.js';
@@ -98,8 +99,13 @@ async function boot() {
     try {
       modelState = await getModelState();
     } catch {}
-    const isCached = modelState === 'cached';
-    console.log('[nyvex] modelState', modelState);
+    let bundled = false;
+    try {
+      bundled = await hasBundledModel();
+    } catch {}
+    // APK with embedded model → treat as cached (logo only, no download UI)
+    const isCached = modelState === 'cached' || bundled;
+    console.log('[nyvex] modelState', modelState, 'bundled', bundled, 'native', isNativeApp());
 
     const progressEls = [
       'loadLiveMeta', 'loadMb', 'loadSpeed', 'loadEta', 'loadStatus', 'loadDetail', 'loadWarn',
@@ -154,12 +160,13 @@ async function boot() {
     const t0 = Date.now();
     // FAST PATH: model already on device → open chat after ~600ms, finish init in background
     if (isCached) {
+      const splashMs = bundled || isNativeApp() ? 400 : 600;
       setTimeout(() => {
         if (!minimized) {
           enterApp();
           try { $('composerInput')?.focus(); } catch {}
         }
-      }, 600);
+      }, splashMs);
     }
 
     const loadPromise = loadModel().catch((e) => {
