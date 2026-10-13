@@ -152,7 +152,7 @@ jobs:
           fi
 
       - name: Upload release APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: nyvex-release-apk
           path: nyvex-release.apk
