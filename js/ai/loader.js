@@ -81,7 +81,7 @@ export function getModelStatus() {
   if (modelReady)
     return { state: 'ready', label: loadFromCache ? 'AI готов к работе ✓ · из кэша' : 'AI готов к работе ✓', pct: 100, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: 0, eta: 0 };
   if (loading)
-    return { state: 'loading', label: 'Загрузка AI · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: loadSpeed, eta: loadEta };
+    return { state: 'loading', label: 'Скачивание · ' + Math.round(loadPct) + '%', pct: loadPct, device: modelDevice, loaded: loadLoaded, total: loadTotal, speed: loadSpeed, eta: loadEta };
   return { state: 'idle', label: 'AI не загружен', pct: 0, device: modelDevice, loaded: 0, total: 0, speed: 0, eta: 0 };
 }
 
@@ -159,16 +159,20 @@ function updateUI(payload) {
   const mbEl = $('loadMb');
 
   if (payload.status === 'from_cache' || payload.status === 'done') {
+    try {
+      const panel = document.getElementById('loadProgressPanel');
+      if (panel) panel.style.display = '';
+    } catch {}
     loadPct = 100;
     loadFromCache = payload.status === 'from_cache';
     updateRingProgress(100);
-    if (st) st.textContent = payload.status === 'from_cache' ? 'Загрузка из кэша ✓' : 'Готово!';
+    if (st) st.textContent = payload.status === 'from_cache' ? 'Загружено из кэша' : 'AI готов — можно начинать';
     if (det) det.textContent = 'Модель · ' + modelDevice;
     if (fill) fill.style.width = '100%';
     if (pc) pc.textContent = '100%';
     const live = document.getElementById('loadLiveMeta');
     if (live) {
-      live.textContent = payload.status === 'from_cache' ? 'Загружено из кэша · мгновенно' : 'AI готов';
+      live.textContent = payload.status === 'from_cache' ? 'Загружено из кэша · можно начинать' : 'AI готов к работе';
       live.style.opacity = '1';
     }
     saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
@@ -183,6 +187,10 @@ function updateUI(payload) {
   }
 
   if (payload.status === 'progress') {
+    try {
+      const panel = document.getElementById('loadProgressPanel');
+      if (panel) panel.style.display = '';
+    } catch {}
     const total = payload.total || 900 * 1024 * 1024;
     const loaded = payload.loaded || 0;
     const pct = payload.pct != null ? payload.pct : total ? (loaded / total) * 100 : 0;
@@ -217,12 +225,12 @@ function updateUI(payload) {
     if (pc) pc.textContent = Math.round(loadPct) + '%';
     if (st) st.textContent = 'Скачивание модели…';
     if (mbEl) mbEl.textContent = formatBytes(loaded) + ' / ' + formatBytes(total);
-    if (speedEl) speedEl.textContent = formatSpeed(payload.speed);
-    if (etaEl) etaEl.textContent = 'ETA ' + formatEta(payload.eta);
+    if (speedEl) speedEl.textContent = 'Скорость: ' + (formatSpeed(payload.speed) || '—');
+    if (etaEl) etaEl.textContent = 'Осталось: ' + (formatEta(payload.eta) || '—');
     const live = document.getElementById('loadLiveMeta');
     if (live) {
       const parts = [
-        'Загрузка AI · ' + Math.round(loadPct) + '%',
+        'Скачивание · ' + Math.round(loadPct) + '%',
         formatBytes(loaded) + ' / ' + formatBytes(total),
       ];
       if (payload.speed) parts.push(formatSpeed(payload.speed));

@@ -17,7 +17,7 @@ export const STORAGE_KEYS = {
 };
 
 /** Internal model id — never show in UI */
-export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+export const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
 export const DEFAULT_MODEL_ID = MODEL_ID;
 
 export const MODEL = {

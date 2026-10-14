@@ -131,6 +131,8 @@ async function continueModelBoot() {
     const cancelBtn = document.getElementById('cancelLoadBtn');
     const retryBtn = document.getElementById('retryLoadBtn');
     if (isCached) {
+      const panel = document.getElementById('loadProgressPanel');
+      if (panel) panel.style.display = 'none';
       progressEls.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
@@ -141,6 +143,8 @@ async function continueModelBoot() {
         try { el.style.display = 'none'; } catch {}
       });
     } else {
+      const panel = document.getElementById('loadProgressPanel');
+      if (panel) panel.style.display = '';
       progressEls.forEach((id) => {
         const el = document.getElementById(id);
         if (el) el.style.display = '';

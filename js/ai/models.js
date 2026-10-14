@@ -5,7 +5,7 @@ export const AVAILABLE_MODELS = [
   {
     id: 'qwen-0.5b',
     name: 'Быстрая',
-    description: 'Мгновенные ответы, базовое качество',
+    description: 'Мгновенные ответы, базовое качество · нужно ~1.5 ГБ RAM',
     hfId: 'onnx-community/Qwen2.5-0.5B-Instruct',
     size: 350 * 1024 * 1024,
     sizeLabel: '≈350 МБ',
@@ -13,12 +13,12 @@ export const AVAILABLE_MODELS = [
     speed: 5,
     ramNeeded: 1500 * 1024 * 1024,
     dtype: 'q4',
-    default: true,
+    default: false,
   },
   {
     id: 'qwen-1.5b',
     name: 'Умная',
-    description: 'Баланс скорости и качества',
+    description: 'Баланс скорости и качества · нужно ~2.5 ГБ RAM · рекомендуется',
     hfId: 'onnx-community/Qwen2.5-1.5B-Instruct',
     size: 900 * 1024 * 1024,
     sizeLabel: '≈900 МБ',
@@ -26,12 +26,12 @@ export const AVAILABLE_MODELS = [
     speed: 3,
     ramNeeded: 2500 * 1024 * 1024,
     dtype: 'q4',
-    default: false,
+    default: true,
   },
   {
     id: 'qwen-3b',
     name: 'Мощная',
-    description: 'Лучшее качество, нужно больше RAM',
+    description: 'Лучшее качество · нужно ~5 ГБ RAM (флагман)',
     hfId: 'onnx-community/Qwen2.5-3B-Instruct',
     size: 2500 * 1024 * 1024,
     sizeLabel: '≈2.5 ГБ',
@@ -47,9 +47,9 @@ const KEY_ACTIVE = 'nyvex_active_model';
 const KEY_DOWNLOADED = 'nyvex_downloaded_models';
 
 export function getActiveModel() {
-  let id = 'qwen-0.5b';
+  let id = 'qwen-1.5b';
   try {
-    id = localStorage.getItem(KEY_ACTIVE) || 'qwen-0.5b';
+    id = localStorage.getItem(KEY_ACTIVE) || 'qwen-1.5b';
   } catch {}
   return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
 }

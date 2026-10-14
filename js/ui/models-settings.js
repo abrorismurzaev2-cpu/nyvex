@@ -25,8 +25,9 @@ export function renderModelList() {
   if (!container) return;
 
   const activeId = getActiveModel().id;
+  const hint = `<p class="model-hint">Для большинства телефонов подходит «Умная». «Мощная» — для флагманов с большим объёмом RAM.</p>`;
 
-  container.innerHTML = AVAILABLE_MODELS.map((model) => {
+  container.innerHTML = hint + AVAILABLE_MODELS.map((model) => {
     const isActive = model.id === activeId;
     const isDownloaded = isModelDownloaded(model.id);
     const ramGb = Math.round((model.ramNeeded / (1024 * 1024 * 1024)) * 10) / 10;
@@ -82,7 +83,7 @@ async function downloadModel(id) {
     if (ok || isModelReady()) {
       markModelDownloaded(id);
       if (fill) fill.style.width = '100%';
-      if (progressText) progressText.innerHTML = '<span>Готово</span><span>100%</span>';
+      if (progressText) progressText.innerHTML = '<span>Загружено</span><span>100%</span>';
       toast('Модель «' + model.name + '» загружена');
       renderModelList();
     } else {
@@ -125,7 +126,7 @@ async function deleteModel(id) {
   }
   unmarkModelDownloaded(id);
   if (getActiveModel().id === id) {
-    setActiveModel('qwen-0.5b');
+    setActiveModel('qwen-1.5b');
   }
   renderModelList();
   toast('Модель удалена');

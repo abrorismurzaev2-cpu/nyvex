@@ -75,7 +75,7 @@ export function notifyDownloadProgress(pct, speedStr, etaStr) {
 
 export function notifyDownloadDone() {
   lastNotifAt = 0;
-  show('NYVEX · Готово!', 'AI загружен и готов к работе.', {
+  show('NYVEX', 'AI загружен и готов к работе.', {
     silent: false,
     requireInteraction: false,
   });

@@ -44,16 +44,20 @@
         </svg>
       </div>
     </div>
-    <!-- hidden status for accessibility / debug, not visible -->
-    <div class="sr-only" id="loadStatus">Загрузка</div>
-    <div class="sr-only" id="loadPercent">0%</div>
-    <div class="sr-only" id="loadDetail"></div>
-    <div class="sr-only" id="loadMb"></div>
-    <div class="sr-only" id="loadSpeed"></div>
-    <div class="sr-only" id="loadEta"></div>
-    <div class="sr-only" id="loadWarn"></div>
-    <div class="sr-only" id="loadFill"></div>
-    <div class="splash-meta" id="loadLiveMeta" style="opacity:0.7;font-size:12px;color:#8a8a9a;text-align:center;max-width:90%;padding:0 16px;font-variant-numeric:tabular-nums;">Загрузка AI…</div>
+    <div class="splash-progress-panel" id="loadProgressPanel" style="display:none">
+      <div class="splash-pct" id="loadPercent"></div>
+      <div class="splash-status" id="loadStatus">Загрузка AI…</div>
+      <div class="splash-bar"><div class="splash-bar-fill" id="loadFill" style="width:0%"></div></div>
+      <div class="splash-mb" id="loadMb">— / — МБ</div>
+      <div class="splash-stats">
+        <span id="loadSpeed">— МБ/с</span>
+        <span class="splash-dot">·</span>
+        <span id="loadEta">~ —</span>
+      </div>
+      <div class="splash-detail" id="loadDetail"></div>
+      <div class="splash-warn" id="loadWarn" style="display:none"></div>
+    </div>
+    <div class="splash-meta" id="loadLiveMeta">AI загрузится один раз. После этого — работает офлайн.</div>
     <button type="button" class="btn btn-ghost splash-skip" id="cancelLoadBtn">Свернуть</button>
     <button type="button" class="btn btn-primary splash-retry" id="retryLoadBtn" style="display:none">Повторить</button>
   </div>
@@ -322,7 +326,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast">Готово</div>
+  <div class="toast" id="toast"></div>
 
   <script type="module" src="js/main.js"></script>
 </body>

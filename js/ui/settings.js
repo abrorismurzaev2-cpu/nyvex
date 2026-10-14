@@ -187,17 +187,14 @@ async function refreshCacheInfo() {
   try {
     const { formatBytes } = await import('../ai/model-cache.js');
     const size = await getModelCacheSize();
-    let persist = false;
-    try { persist = await isStoragePersisted(); } catch {}
-    const persistTxt = persist ? 'хранение защищено' : 'хранение не защищено';
     if (size > 5 * 1024 * 1024) {
-      el.textContent = 'Модель на устройстве · ' + formatBytes(size) + ' · ' + persistTxt;
+      el.textContent = 'AI готов к работе · ' + formatBytes(size) + ' на устройстве';
     } else if (size > 0) {
-      el.textContent = 'Кэш частично · ' + formatBytes(size) + ' · ' + persistTxt;
+      el.textContent = 'AI загружается · ' + formatBytes(size);
     } else {
-      el.textContent = 'Кэш пуст — нужна первая загрузка · ' + persistTxt;
+      el.textContent = 'AI не загружен · скачается один раз, дальше офлайн';
     }
   } catch {
-    el.textContent = 'Кэш модели: н/д';
+    el.textContent = 'Статус AI: н/д';
   }
 }
