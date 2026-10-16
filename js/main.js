@@ -115,7 +115,21 @@ async function boot() {
   }
 }
 
+let bootInProgress = false;
 async function continueModelBoot() {
+  if (bootInProgress) {
+    console.log('[nyvex] boot already in progress');
+    return;
+  }
+  bootInProgress = true;
+  try {
+    await continueModelBootInner();
+  } finally {
+    bootInProgress = false;
+  }
+}
+
+async function continueModelBootInner() {
   try {
     // Always ensure weakest model is selected for first auto-download
     try {

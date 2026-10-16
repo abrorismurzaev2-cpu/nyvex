@@ -54,6 +54,7 @@ export function shouldPreferWasm() {
 
 let worker = null;
 let modelReady = false;
+let loadPromise = null;
 let modelDevice = 'WASM';
 let loadError = null;
 let loading = false;
@@ -181,30 +182,17 @@ function updateUI(payload) {
   const etaEl = $('loadEta');
   const mbEl = $('loadMb');
 
+  // transformers.js emits done/from_cache PER FILE — do not mark fully ready here
   if (payload.status === 'from_cache' || payload.status === 'done') {
-    try {
-      const panel = document.getElementById('loadProgressPanel');
-      if (panel) panel.style.display = '';
-    } catch {}
-    loadPct = 100;
-    loadFromCache = payload.status === 'from_cache';
-    updateRingProgress(100);
-    if (st) st.textContent = payload.status === 'from_cache' ? 'Загружено из кэша' : 'AI готов — можно начинать';
-    if (det) det.textContent = 'Модель · ' + modelDevice;
-    if (fill) fill.style.width = '100%';
-    if (pc) pc.textContent = '100%';
+    loadFromCache = payload.status === 'from_cache' || loadFromCache;
+    if (st && !modelReady) {
+      st.textContent = loadFromCache ? 'Чтение из кэша…' : 'Инициализация…';
+    }
     const live = document.getElementById('loadLiveMeta');
-    if (live) {
-      live.textContent = payload.status === 'from_cache' ? 'Загружено из кэша · можно начинать' : 'AI готов к работе';
+    if (live && !modelReady) {
+      live.textContent = loadFromCache ? 'Чтение файлов из кэша…' : 'Подготовка AI…';
       live.style.opacity = '1';
     }
-    saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
-    try { markModelReady(loadTotal || 900*1024*1024); } catch {}
-    try { notifyDownloadDone(); } catch {}
-    try {
-      const hw = document.getElementById('headerLoadWrap');
-      if (hw) hw.style.display = 'none';
-    } catch {}
     emitStatus();
     return;
   }
@@ -295,15 +283,31 @@ function ensureWorker() {
         updateUI(msg);
       } else if (msg.type === 'loaded') {
         modelReady = true;
-      try {
-        const am = getActiveModel();
-        markModelDownloaded(am.id);
-      } catch {}
+        try {
+          const am = getActiveModel();
+          markModelDownloaded(am.id);
+        } catch {}
         loading = false;
-        try { markModelReady(loadTotal || 900*1024*1024); } catch {}
+        try { markModelReady(loadTotal || 350 * 1024 * 1024, activeModelId); } catch {}
         modelDevice = msg.device === 'webgpu' ? 'WebGPU' : 'WASM';
         loadPct = 100;
-        updateUI({ status: 'done' });
+        loadFromCache = true;
+        try {
+          const stEl = $('loadStatus');
+          const live = document.getElementById('loadLiveMeta');
+          const fillEl = $('loadFill');
+          const pcEl = $('loadPercent');
+          if (stEl) stEl.textContent = 'AI готов — можно начинать';
+          if (live) {
+            live.textContent = 'AI готов к работе';
+            live.style.opacity = '1';
+          }
+          if (fillEl) fillEl.style.width = '100%';
+          if (pcEl) pcEl.textContent = '100%';
+          updateRingProgress(100);
+        } catch {}
+        saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
+        try { notifyDownloadDone(); } catch {}
         emitStatus();
       } else if (msg.type === 'result') {
         const p = pendingGenerate.get(msg.id);
@@ -464,7 +468,23 @@ export function cancelLoad() {
 }
 
 export async function loadModel(modelId) {
-  if (loading) return modelReady;
+  // Single-flight: concurrent callers share the same promise (no re-download loop)
+  if (modelReady) {
+    console.log('[nyvex] loadModel: already ready');
+    return true;
+  }
+  if (loadPromise) {
+    console.log('[nyvex] loadModel: join in-flight load');
+    return loadPromise;
+  }
+
+  loadPromise = loadModelInner(modelId).finally(() => {
+    loadPromise = null;
+  });
+  return loadPromise;
+}
+
+async function loadModelInner(modelId) {
   if (modelReady) return true;
   activeModelId = MODEL_ID;
 
@@ -671,9 +691,28 @@ async function loadMainThread(preferGpu) {
       const am = getActiveModel();
       markModelDownloaded(am.id);
     } catch {}
+    try {
+      markModelReady(loadTotal || 350 * 1024 * 1024, activeModelId);
+    } catch {}
     useWorker = false;
     loadPct = 100;
-    updateUI({ status: 'done' });
+    loadFromCache = true;
+    try {
+      const stEl = $('loadStatus');
+      const live = document.getElementById('loadLiveMeta');
+      if (stEl) stEl.textContent = 'AI готов — можно начинать';
+      if (live) {
+        live.textContent = 'AI готов к работе';
+        live.style.opacity = '1';
+      }
+      updateRingProgress(100);
+      const fillEl = $('loadFill');
+      const pcEl = $('loadPercent');
+      if (fillEl) fillEl.style.width = '100%';
+      if (pcEl) pcEl.textContent = '100%';
+    } catch {}
+    saveProgressMeta({ percent: 100, ready: true, totalLoaded: 1, totalBytes: 1 });
+    try { notifyDownloadDone(); } catch {}
     loading = false;
     emitStatus();
     return true;
@@ -770,3 +809,28 @@ export function generateViaWorker(messages, options = {}) {
 export function terminateWorker() {
   unloadModel();
 }
+
+
+/** Console helper: debugModel.status() / debugModel.reset() */
+try {
+  if (typeof window !== 'undefined') {
+    window.debugModel = {
+      async status() {
+        const { debugModelStatus } = await import('./model-cache.js');
+        return debugModelStatus({
+          generator: modelReady,
+          isLoading: loading,
+          device: modelDevice,
+          activeModelId,
+        });
+      },
+      async reset() {
+        const { clearModelCache } = await import('./model-cache.js');
+        await clearModelCache();
+        modelReady = false;
+        mainGenerator = null;
+        console.log('[nyvex] model cache + flag cleared');
+      },
+    };
+  }
+} catch {}
