@@ -1,9 +1,11 @@
+import { getRecommendReason } from '../ai/capabilities.js';
 /**
  * NYVEX — settings UI for model download / switch / delete
  */
 import {
   AVAILABLE_MODELS,
   getActiveModel,
+  getRecommendedModel,
   setActiveModel,
   isModelDownloaded,
   markModelDownloaded,
@@ -30,7 +32,10 @@ export function renderModelList() {
 
   const activeId = getActiveModel().id;
   const ram = getDeviceMemoryGb();
-  const hint = `<p class="model-hint">3 модели AI на выбор — от Meta и сообщества. Для большинства телефонов подходит «Умная». «Мощная» — для флагманов (6+ ГБ RAM). На этом устройстве ≈${ram} ГБ RAM.</p>`;
+  const rec = getRecommendedModel();
+  const reason = (typeof getRecommendReason === 'function' ? getRecommendReason() : '') || ('Рекомендуем «' + rec.name + '»');
+  const hint = `<p class="model-hint">${reason}. На устройстве ≈${ram} ГБ RAM.</p>
+    <div class="model-recommend glass">Рекомендуется: <strong>${rec.name}</strong> · ${rec.sizeLabel}</div>`;
 
   container.innerHTML =
     hint +
@@ -60,7 +65,7 @@ export function renderModelList() {
         <div class="model-name">${model.name}${model.default ? ' · Рекомендуется' : ''}</div>
         <div class="model-desc">${model.description}</div>
         <div class="model-meta">
-          <span>${model.vendor || ''}</span>
+          
           <span>📦 ${model.sizeLabel}</span>
           <span>💾 ~${model.ramNeededGb} ГБ RAM</span>
           <span>⭐ ${stars(model.quality)}</span>
@@ -152,7 +157,7 @@ async function deleteModel(id) {
   }
   unmarkModelDownloaded(id);
   if (getActiveModel().id === id) {
-    setActiveModel('llama-3.2-1b');
+    setActiveModel('fast');
   }
   renderModelList();
   toast('Модель удалена');

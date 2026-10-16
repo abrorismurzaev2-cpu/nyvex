@@ -3,6 +3,12 @@
  * Web Worker + fallback, model status, model switch
  */
 import { MODEL, CDN, MODEL_ID } from '../core/config.js';
+import {
+  detectBestBackend,
+  applyOnnxEnv,
+  backendLabel,
+  getRecommendedModelId,
+} from './capabilities.js';
 import { isNativeApp } from '../core/platform.js';
 import { getActiveModel, markModelDownloaded } from './models.js';
 import { isMobile, $ } from '../core/utils.js';
@@ -611,21 +617,21 @@ async function loadMainThread(preferGpu) {
     const { pipeline, env } = await import(/* @vite-ignore */ CDN.primary);
     env.allowLocalModels = false;
     env.useBrowserCache = true;
-    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v2'; } catch {}
+    try { env.allowRemoteModels = true; env.cacheDir = 'nyvex-model-cache-v3'; } catch {}
     try {
       const am = getActiveModel();
       activeModelId = am.hfId || activeModelId;
     } catch {}
-    modelDevice = preferGpu ? 'WebGPU' : 'WASM';
+    const backend = detectBestBackend();
+    applyOnnxEnv(env, backend);
+    modelDevice = backendLabel(backend);
 
     const progressMap = {};
     let lastTs = Date.now();
     let lastLoaded = 0;
 
-    const dtype = (getActiveModel().dtype) || MODEL.dtype || 'q4';
     mainGenerator = await pipeline(MODEL.task, activeModelId, {
-      device: preferGpu ? 'webgpu' : 'wasm',
-      dtype,
+      quantized: true,
       progress_callback: (p) => {
         if (cancelled) return;
         if (p.status === 'progress' && p.file) {
@@ -726,7 +732,16 @@ export function generateViaWorker(messages, options = {}) {
   return (async () => {
     if (!mainGenerator) return 'Модель недоступна.';
     try {
-      const output = await mainGenerator(messages, {
+      // v2 text-generation expects a string prompt
+      const lines = [];
+      for (const m of messages || []) {
+        if (m.role === 'system') lines.push(m.content || '');
+        else if (m.role === 'user') lines.push('User: ' + (m.content || ''));
+        else if (m.role === 'assistant') lines.push('Assistant: ' + (m.content || ''));
+      }
+      lines.push('Assistant:');
+      const prompt = lines.join('\n');
+      const output = await mainGenerator(prompt, {
         max_new_tokens: options.max_new_tokens || MODEL.maxNewTokens,
         temperature: options.temperature ?? MODEL.temperature,
         top_p: options.top_p ?? MODEL.topP,
@@ -734,15 +749,16 @@ export function generateViaWorker(messages, options = {}) {
         repetition_penalty: options.repetition_penalty ?? MODEL.repetitionPenalty,
       });
       let reply = '';
-      if (Array.isArray(output) && output[0]?.generated_text) {
+      if (Array.isArray(output) && output[0]?.generated_text != null) {
         const gen = output[0].generated_text;
-        if (Array.isArray(gen)) {
+        if (typeof gen === 'string') {
+          reply = gen.startsWith(prompt) ? gen.slice(prompt.length) : gen;
+        } else if (Array.isArray(gen)) {
           const last = gen[gen.length - 1];
           reply = typeof last === 'string' ? last : last?.content || '';
-        } else {
-          reply = String(gen).replace(/^[\s\S]*?assistant\s*/i, '').trim();
         }
       }
+      reply = String(reply || '').replace(/^Assistant:\s*/i, '').trim();
       return reply || 'Не удалось сгенерировать ответ.';
     } catch (e) {
       return 'Ошибка генерации: ' + String(e?.message || '').slice(0, 120);

@@ -1,6 +1,6 @@
 /**
  * NYVEX — ai/worker.js
- * Always download/load from HuggingFace (browser cache). No local APK assets.
+ * @xenova/transformers@2.17.2 + optional non-SIMD ORT 1.14
  */
 import { installResumeFetch } from './resume-fetch.js';
 
@@ -8,11 +8,12 @@ installResumeFetch();
 
 let pipeline;
 let env;
-let MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
+let MODEL_ID = 'Xenova/Qwen1.5-0.5B-Chat';
 let DTYPE = 'q4';
 let generator = null;
 let device = 'wasm';
 let ready = false;
+let backend = 'wasm-no-simd';
 
 const MIRRORS = ['https://huggingface.co', 'https://hf-mirror.com'];
 
@@ -24,31 +25,116 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function detectSimd() {
+  try {
+    const bytes = new Uint8Array([
+      0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
+    ]);
+    return WebAssembly.validate(bytes);
+  } catch {
+    return false;
+  }
+}
+
 function friendlyError(err) {
   const msg = String(err?.message || err || '');
+  if (/SIMD|simd/i.test(msg)) {
+    return 'Устройство без SIMD — включён режим совместимости. Повторите загрузку.';
+  }
   if (/network|fetch|Failed to fetch|Load failed|TypeError|HTTP /i.test(msg)) {
     return 'Ошибка сети при загрузке AI. Проверьте интернет / Wi‑Fi и повторите.';
   }
   if (/CORS|cross-origin/i.test(msg)) return 'Ошибка доступа к модели. Обновите страницу.';
-  if (/memory|out of memory|OOM/i.test(msg)) return 'Недостаточно памяти. Закройте другие вкладки или выберите модель «Быстрая».';
+  if (/memory|out of memory|OOM/i.test(msg)) {
+    return 'Недостаточно памяти. Закройте другие вкладки или выберите модель «Быстрая».';
+  }
   if (/WebGPU/i.test(msg)) return 'WebGPU недоступен, пробуем WASM…';
+  if (/no available backend/i.test(msg)) {
+    return 'Нет подходящего backend. Включён режим совместимости без SIMD.';
+  }
   return msg.slice(0, 180) || 'Не удалось загрузить AI';
+}
+
+function messagesToPrompt(messages) {
+  const lines = [];
+  for (const m of messages || []) {
+    const role = m.role || 'user';
+    const content = typeof m.content === 'string' ? m.content : '';
+    if (role === 'system') lines.push(content);
+    else if (role === 'user') lines.push('User: ' + content);
+    else if (role === 'assistant') lines.push('Assistant: ' + content);
+  }
+  lines.push('Assistant:');
+  return lines.join('\n');
+}
+
+function extractReply(output, prompt) {
+  let reply = '';
+  try {
+    if (Array.isArray(output) && output[0]?.generated_text != null) {
+      const gen = output[0].generated_text;
+      if (typeof gen === 'string') {
+        reply = gen;
+        if (prompt && reply.startsWith(prompt)) reply = reply.slice(prompt.length);
+      } else if (Array.isArray(gen)) {
+        const last = gen[gen.length - 1];
+        reply = typeof last === 'string' ? last : last?.content || '';
+      }
+    } else if (typeof output === 'string') {
+      reply = output;
+    }
+  } catch {}
+  reply = String(reply || '')
+    .replace(/^Assistant:\s*/i, '')
+    .replace(/^[:\s]+/, '')
+    .trim();
+  // take last assistant turn if multi
+  const parts = reply.split(/(?:^|\n)Assistant:\s*/i);
+  if (parts.length > 1) reply = parts[parts.length - 1].trim();
+  const userIdx = reply.search(/\nUser:\s*/i);
+  if (userIdx > 0) reply = reply.slice(0, userIdx).trim();
+  return reply;
 }
 
 async function ensureTransformers() {
   if (pipeline) return;
-  const mod = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2');
+  const mod = await import('https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2');
   pipeline = mod.pipeline;
   env = mod.env;
+
   env.allowLocalModels = false;
   env.allowRemoteModels = true;
   env.useBrowserCache = true;
   try {
-    env.cacheDir = 'nyvex-model-cache-v2';
+    env.cacheDir = 'nyvex-model-cache-v3';
   } catch {}
+
+  const simd = detectSimd();
+  backend = simd ? 'wasm-simd' : 'wasm-no-simd';
+
+  try {
+    if (!env.backends) env.backends = {};
+    if (!env.backends.onnx) env.backends.onnx = {};
+    if (!env.backends.onnx.wasm) env.backends.onnx.wasm = {};
+    const wasm = env.backends.onnx.wasm;
+    if (!simd) {
+      wasm.simd = false;
+      wasm.numThreads = 1;
+      wasm.proxy = false;
+      wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
+    } else {
+      wasm.simd = true;
+      wasm.numThreads = Math.min(self.navigator?.hardwareConcurrency || 2, 4);
+      wasm.proxy = false;
+    }
+  } catch (e) {
+    console.warn('[nyvex-worker] onnx env', e);
+  }
+
+  post({ type: 'progress', status: 'init', message: simd ? 'WASM' : 'Режим совместимости · WASM', pct: 1 });
 }
 
-async function tryPipeline(dev, dt, remoteHost) {
+async function tryPipeline(remoteHost) {
   await ensureTransformers();
   try {
     if (remoteHost) env.remoteHost = remoteHost;
@@ -58,9 +144,9 @@ async function tryPipeline(dev, dt, remoteHost) {
   let lastTs = Date.now();
   let lastLoaded = 0;
 
+  // v2: quantized defaults; no device/dtype like v3
   return pipeline('text-generation', MODEL_ID, {
-    device: dev,
-    dtype: dt,
+    quantized: true,
     progress_callback: (p) => {
       try {
         if (p.status === 'progress' && p.file) {
@@ -107,36 +193,35 @@ async function tryPipeline(dev, dt, remoteHost) {
   });
 }
 
-async function loadPipeline(preferGpu) {
-  const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm'];
-  const dtypes = DTYPE ? [DTYPE, 'q4', 'q4f16'] : ['q4', 'q4f16'];
-  // unique preserve order
-  const seen = new Set();
-  const dtypeList = dtypes.filter((d) => (seen.has(d) ? false : seen.add(d)));
+async function loadPipeline() {
   let lastErr = null;
-
   for (const mirror of MIRRORS) {
-    for (const dev of devices) {
-      for (const dt of dtypeList) {
-        for (let retry = 0; retry < 3; retry++) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        post({
+          type: 'progress',
+          status: 'init',
+          message: attempt ? 'Повтор…' : 'Загрузка AI…',
+          pct: 2,
+        });
+        generator = await tryPipeline(mirror);
+        device = backend === 'wasm-no-simd' ? 'WASM-compat' : 'WASM';
+        return;
+      } catch (err) {
+        lastErr = err;
+        console.error('[nyvex-worker] load attempt', mirror, err);
+        // If SIMD error — force non-SIMD paths and retry
+        const msg = String(err?.message || err || '');
+        if (/SIMD|no available backend/i.test(msg) && env?.backends?.onnx?.wasm) {
           try {
-            post({
-              type: 'progress',
-              status: 'init',
-              message: retry ? 'Повтор ' + retry + '/2…' : 'Подключение…',
-            });
-            console.log('[nyvex-worker] load', MODEL_ID, dev, dt, mirror, 'retry', retry);
-            device = dev;
-            generator = await tryPipeline(dev, dt, mirror);
-            return;
-          } catch (err) {
-            lastErr = err;
-            console.error('[nyvex-worker] failed', dev, dt, mirror, err);
-            post({ type: 'progress', status: 'init', message: friendlyError(err) });
-            generator = null;
-            await sleep(Math.min(4000, 800 * Math.pow(2, retry)));
-          }
+            env.backends.onnx.wasm.simd = false;
+            env.backends.onnx.wasm.numThreads = 1;
+            env.backends.onnx.wasm.wasmPaths =
+              'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
+            backend = 'wasm-no-simd';
+          } catch {}
         }
+        await sleep(800 * (attempt + 1));
       }
     }
   }
@@ -150,9 +235,9 @@ self.onmessage = async (e) => {
     if (type === 'load') {
       if (data.modelId) MODEL_ID = data.modelId;
       if (data.dtype) DTYPE = data.dtype;
-      await loadPipeline(!!data.preferGpu);
+      await loadPipeline();
       ready = true;
-      post({ type: 'loaded', device, id, modelId: MODEL_ID });
+      post({ type: 'loaded', device, id, modelId: MODEL_ID, backend });
       return;
     }
     if (type === 'generate') {
@@ -162,7 +247,8 @@ self.onmessage = async (e) => {
       }
       const messages = Array.isArray(data.messages) ? data.messages : [];
       const opts = data.options || {};
-      const genPromise = generator(messages, {
+      const prompt = messagesToPrompt(messages);
+      const genPromise = generator(prompt, {
         max_new_tokens: Math.min(opts.max_new_tokens || 120, 200),
         temperature: opts.temperature ?? 0.5,
         top_p: opts.top_p ?? 0.85,
@@ -170,39 +256,21 @@ self.onmessage = async (e) => {
         do_sample: true,
         repetition_penalty: opts.repetition_penalty ?? 1.05,
       });
-      const timeoutMs = 40000;
+      const timeoutMs = 45000;
       const output = await Promise.race([
         genPromise,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('AI не отвечает. Попробуйте ещё раз.')), timeoutMs)),
+        new Promise((_, rej) =>
+          setTimeout(() => rej(new Error('AI не отвечает. Попробуйте ещё раз.')), timeoutMs)
+        ),
       ]);
-      let reply = '';
-      try {
-        if (Array.isArray(output) && output[0]?.generated_text) {
-          const gen = output[0].generated_text;
-          if (Array.isArray(gen)) {
-            const last = gen[gen.length - 1];
-            reply = typeof last === 'string' ? last : (last?.content || '');
-          } else if (typeof gen === 'string') {
-            // strip chat template leftovers
-            reply = gen;
-            const idx = reply.lastIndexOf('assistant');
-            if (idx >= 0) reply = reply.slice(idx + 9);
-            reply = reply.replace(/^[:\s]+/, '').trim();
-          }
-        } else if (typeof output === 'string') {
-          reply = output;
-        }
-      } catch (parseErr) {
-        console.error('[nyvex-worker] parse', parseErr);
-      }
+      let reply = extractReply(output, prompt);
       if (!reply || reply.length < 1) {
         reply = 'Не удалось получить ответ. Попробуйте переформулировать.';
       }
-      console.log('[nyvex-worker] reply len', reply.length);
       post({ type: 'result', id, text: reply.trim() });
       return;
     }
-    if (type === 'ping') post({ type: 'pong', ready, device, modelId: MODEL_ID });
+    if (type === 'ping') post({ type: 'pong', ready, device, modelId: MODEL_ID, backend });
   } catch (err) {
     console.error('[nyvex-worker]', err);
     post({ type: 'error', id, message: friendlyError(err) });

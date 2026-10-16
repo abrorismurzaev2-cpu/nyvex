@@ -1,51 +1,53 @@
 /**
- * NYVEX — catalog of downloadable on-device models (Transformers.js / ONNX)
- * TinyLlama + Meta Llama 3.2 (ONNX for Transformers.js)
+ * NYVEX — models for @xenova/transformers@2.17 (ONNX quantized, non-SIMD safe)
+ * UI shows only: Быстрая / Умная / Мощная (never HF id)
  */
+import { getRecommendedModelId, getDeviceCaps } from './capabilities.js';
+
 export const AVAILABLE_MODELS = [
   {
-    id: 'tinyllama-1.1b',
+    id: 'fast',
     name: 'Быстрая',
     description: 'Мгновенные ответы для простых задач',
-    hfId: 'onnx-community/TinyLlama-1.1B-Chat-v1.0-ONNX',
-    size: 650 * 1024 * 1024,
-    sizeLabel: '≈650 МБ',
+    hfId: 'Xenova/Qwen1.5-0.5B-Chat',
+    size: 350 * 1024 * 1024,
+    sizeLabel: '≈350 МБ',
     quality: 2,
     speed: 5,
     ramNeededGb: 1.5,
     minDeviceMemoryGb: 2,
     dtype: 'q4',
-    vendor: 'TinyLlama',
+    vendor: '',
     default: false,
   },
   {
-    id: 'llama-3.2-1b',
+    id: 'smart',
     name: 'Умная',
-    description: 'Баланс скорости и качества · рекомендуем',
-    hfId: 'onnx-community/Llama-3.2-1B-Instruct-ONNX',
-    size: 800 * 1024 * 1024,
-    sizeLabel: '≈800 МБ',
+    description: 'Баланс скорости и качества',
+    hfId: 'Xenova/Qwen1.5-1.8B-Chat',
+    size: 900 * 1024 * 1024,
+    sizeLabel: '≈900 МБ',
     quality: 3,
     speed: 4,
-    ramNeededGb: 2,
+    ramNeededGb: 2.5,
     minDeviceMemoryGb: 3,
     dtype: 'q4',
-    vendor: 'Meta',
+    vendor: '',
     default: true,
   },
   {
-    id: 'llama-3.2-3b',
+    id: 'strong',
     name: 'Мощная',
     description: 'Максимальное качество для флагманов',
-    hfId: 'onnx-community/Llama-3.2-3B-Instruct-ONNX',
-    size: 2500 * 1024 * 1024,
-    sizeLabel: '≈2.5 ГБ',
+    hfId: 'Xenova/Phi-3-mini-4k-instruct',
+    size: 2000 * 1024 * 1024,
+    sizeLabel: '≈2 ГБ',
     quality: 4,
     speed: 2,
     ramNeededGb: 4,
     minDeviceMemoryGb: 6,
     dtype: 'q4',
-    vendor: 'Meta',
+    vendor: '',
     default: false,
   },
 ];
@@ -53,7 +55,6 @@ export const AVAILABLE_MODELS = [
 const KEY_ACTIVE = 'nyvex_active_model';
 const KEY_DOWNLOADED = 'nyvex_downloaded_models';
 
-/** Device RAM in GB (Chrome/Android); fallback 4 */
 export function getDeviceMemoryGb() {
   try {
     const m = navigator.deviceMemory;
@@ -66,14 +67,27 @@ export function isModelRecommended(model) {
   return getDeviceMemoryGb() >= (model.minDeviceMemoryGb || 2);
 }
 
+export function getRecommendedModel() {
+  const id = getRecommendedModelId();
+  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
+}
+
 export function getActiveModel() {
-  let id = 'llama-3.2-1b';
+  let id = null;
   try {
-    id = localStorage.getItem(KEY_ACTIVE) || 'llama-3.2-1b';
+    id = localStorage.getItem(KEY_ACTIVE);
   } catch {}
-  // migrate old qwen ids
-  if (String(id).startsWith('qwen')) id = 'llama-3.2-1b';
-  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS.find((m) => m.default) || AVAILABLE_MODELS[0];
+  // migrate old ids
+  if (id && String(id).startsWith('qwen')) id = null;
+  if (id && String(id).startsWith('llama')) id = null;
+  if (id && String(id).startsWith('tinyllama')) id = null;
+  if (!id) {
+    id = getRecommendedModelId();
+    try {
+      localStorage.setItem(KEY_ACTIVE, id);
+    } catch {}
+  }
+  return AVAILABLE_MODELS.find((m) => m.id === id) || getRecommendedModel();
 }
 
 export function setActiveModel(id) {
@@ -110,5 +124,7 @@ export function unmarkModelDownloaded(id) {
 }
 
 export function getDefaultModel() {
-  return AVAILABLE_MODELS.find((m) => m.default) || AVAILABLE_MODELS[0];
+  return getRecommendedModel();
 }
+
+export { getDeviceCaps, getRecommendedModelId };

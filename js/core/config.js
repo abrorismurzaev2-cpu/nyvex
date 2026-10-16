@@ -17,7 +17,7 @@ export const STORAGE_KEYS = {
 };
 
 /** Internal model id — never show in UI */
-export const MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
+export const MODEL_ID = 'Xenova/Qwen1.5-0.5B-Chat';
 export const DEFAULT_MODEL_ID = MODEL_ID;
 
 export const MODEL = {
@@ -40,7 +40,7 @@ export const MODEL = {
 };
 
 export const CDN = {
-  primary: 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2',
+  primary: 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2',
 };
 
 export const HF_MIRRORS = [
