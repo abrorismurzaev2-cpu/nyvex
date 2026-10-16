@@ -129,6 +129,7 @@ async function continueModelBoot() {
       'loadLiveMeta', 'loadMb', 'loadSpeed', 'loadEta', 'loadStatus', 'loadDetail', 'loadWarn',
     ];
     const cancelBtn = document.getElementById('cancelLoadBtn');
+    const minimizeBtn = document.getElementById('minimizeLoadBtn');
     const retryBtn = document.getElementById('retryLoadBtn');
     if (isCached) {
       const panel = document.getElementById('loadProgressPanel');
@@ -138,6 +139,7 @@ async function continueModelBoot() {
         if (el) el.style.display = 'none';
       });
       if (cancelBtn) cancelBtn.style.display = 'none';
+      if (minimizeBtn) minimizeBtn.style.display = 'none';
       if (retryBtn) retryBtn.style.display = 'none';
       document.querySelectorAll('#screen-loading .sub-progress, #screen-loading .load-bar, .splash-progress, .load-ring').forEach((el) => {
         try { el.style.display = 'none'; } catch {}
@@ -149,15 +151,28 @@ async function continueModelBoot() {
         const el = document.getElementById(id);
         if (el) el.style.display = '';
       });
-      if (cancelBtn) {
-        cancelBtn.style.display = '';
-        cancelBtn.textContent = 'Свернуть';
-      }
+      if (cancelBtn) cancelBtn.style.display = '';
+      if (minimizeBtn) minimizeBtn.style.display = '';
     }
 
     let minimized = false;
+    // Отменить = stop download, keep progress for resume
     if (cancelBtn) {
       cancelBtn.onclick = () => {
+        cancelLoad();
+        toast('Загрузка отменена. При следующем входе продолжится.');
+        showScreen('loading');
+        const live = document.getElementById('loadLiveMeta');
+        if (live) {
+          live.textContent = 'Загрузка отменена. Нажмите «Повторить» или откройте приложение снова.';
+          live.style.opacity = '1';
+        }
+        if (retryBtn) retryBtn.style.display = '';
+      };
+    }
+    // Свернуть = continue in background, open chat UI
+    if (minimizeBtn) {
+      minimizeBtn.onclick = () => {
         minimized = true;
         enterApp();
         toast('Загрузка AI продолжается в фоне');

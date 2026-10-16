@@ -17,14 +17,14 @@ export const STORAGE_KEYS = {
 };
 
 /** Internal model id — never show in UI */
-export const MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
+export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 export const DEFAULT_MODEL_ID = MODEL_ID;
 
 export const MODEL = {
   id: MODEL_ID,
   task: 'text-generation',
   dtype: 'q4',
-  maxNewTokens: 150,
+  maxNewTokens: 120,
   temperature: 0.5,
   topP: 0.85,
   topK: 40,

@@ -8,7 +8,7 @@ installResumeFetch();
 
 let pipeline;
 let env;
-let MODEL_ID = 'onnx-community/Qwen2.5-1.5B-Instruct';
+let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 let DTYPE = 'q4';
 let generator = null;
 let device = 'wasm';
@@ -108,7 +108,7 @@ async function tryPipeline(dev, dt, remoteHost) {
 }
 
 async function loadPipeline(preferGpu) {
-  const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm', 'webgpu'];
+  const devices = preferGpu ? ['webgpu', 'wasm'] : ['wasm'];
   const dtypes = DTYPE ? [DTYPE, 'q4', 'q4f16'] : ['q4', 'q4f16'];
   // unique preserve order
   const seen = new Set();
@@ -162,25 +162,43 @@ self.onmessage = async (e) => {
       }
       const messages = Array.isArray(data.messages) ? data.messages : [];
       const opts = data.options || {};
-      const output = await generator(messages, {
-        max_new_tokens: opts.max_new_tokens || 150,
+      const genPromise = generator(messages, {
+        max_new_tokens: Math.min(opts.max_new_tokens || 120, 200),
         temperature: opts.temperature ?? 0.5,
         top_p: opts.top_p ?? 0.85,
         top_k: opts.top_k ?? 40,
         do_sample: true,
         repetition_penalty: opts.repetition_penalty ?? 1.05,
       });
+      const timeoutMs = 40000;
+      const output = await Promise.race([
+        genPromise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('AI не отвечает. Попробуйте ещё раз.')), timeoutMs)),
+      ]);
       let reply = '';
-      if (Array.isArray(output) && output[0]?.generated_text) {
-        const gen = output[0].generated_text;
-        if (Array.isArray(gen)) {
-          const last = gen[gen.length - 1];
-          reply = typeof last === 'string' ? last : last?.content || '';
-        } else {
-          reply = String(gen).replace(/^[\s\S]*?assistant\s*/i, '').trim();
+      try {
+        if (Array.isArray(output) && output[0]?.generated_text) {
+          const gen = output[0].generated_text;
+          if (Array.isArray(gen)) {
+            const last = gen[gen.length - 1];
+            reply = typeof last === 'string' ? last : (last?.content || '');
+          } else if (typeof gen === 'string') {
+            // strip chat template leftovers
+            reply = gen;
+            const idx = reply.lastIndexOf('assistant');
+            if (idx >= 0) reply = reply.slice(idx + 9);
+            reply = reply.replace(/^[:\s]+/, '').trim();
+          }
+        } else if (typeof output === 'string') {
+          reply = output;
         }
+      } catch (parseErr) {
+        console.error('[nyvex-worker] parse', parseErr);
       }
-      if (!reply) reply = 'Не удалось сгенерировать ответ. Попробуйте ещё раз.';
+      if (!reply || reply.length < 1) {
+        reply = 'Не удалось получить ответ. Попробуйте переформулировать.';
+      }
+      console.log('[nyvex-worker] reply len', reply.length);
       post({ type: 'result', id, text: reply.trim() });
       return;
     }

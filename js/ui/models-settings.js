@@ -8,9 +8,11 @@ import {
   isModelDownloaded,
   markModelDownloaded,
   unmarkModelDownloaded,
+  getDeviceMemoryGb,
+  isModelRecommended,
 } from '../ai/models.js';
 import { toast } from '../core/toast.js';
-import { loadModel, isModelReady, unloadModel } from '../ai/loader.js';
+import { loadModel, isModelReady, unloadModel, cancelLoad } from '../ai/loader.js';
 
 function stars(n) {
   return '★'.repeat(Math.max(0, n || 0));
@@ -20,30 +22,40 @@ function rockets(n) {
   return '▲'.repeat(Math.max(0, n || 0));
 }
 
+let downloadingId = null;
+
 export function renderModelList() {
   const container = document.getElementById('modelList');
   if (!container) return;
 
   const activeId = getActiveModel().id;
-  const hint = `<p class="model-hint">Для большинства телефонов подходит «Умная». «Мощная» — для флагманов с большим объёмом RAM.</p>`;
+  const ram = getDeviceMemoryGb();
+  const hint = `<p class="model-hint">Для большинства телефонов подходит «Быстрая» или «Умная». «Мощная» — только для флагманов (6+ ГБ RAM). На этом устройстве ≈${ram} ГБ RAM.</p>`;
 
-  container.innerHTML = hint + AVAILABLE_MODELS.map((model) => {
-    const isActive = model.id === activeId;
-    const isDownloaded = isModelDownloaded(model.id);
-    const ramGb = Math.round((model.ramNeeded / (1024 * 1024 * 1024)) * 10) / 10;
+  container.innerHTML =
+    hint +
+    AVAILABLE_MODELS.map((model) => {
+      const isActive = model.id === activeId;
+      const isDownloaded = isModelDownloaded(model.id);
+      const recommended = isModelRecommended(model);
+      const warn = !recommended
+        ? `<div class="model-warn">Может не хватить памяти на этом телефоне</div>`
+        : '';
 
-    let actions = '';
-    if (!isDownloaded) {
-      actions = `<button type="button" class="model-btn primary" data-act="download" data-id="${model.id}">Скачать</button>`;
-    } else if (isActive) {
-      actions = `<span class="model-active-label">✓ Активна</span>`;
-    } else {
-      actions = `
+      let actions = '';
+      if (downloadingId === model.id) {
+        actions = `<button type="button" class="model-btn danger" data-act="cancel-dl" data-id="${model.id}">Отменить</button>`;
+      } else if (!isDownloaded) {
+        actions = `<button type="button" class="model-btn primary" data-act="download" data-id="${model.id}">Скачать</button>`;
+      } else if (isActive) {
+        actions = `<span class="model-active-label">✓ Активна</span>`;
+      } else {
+        actions = `
         <button type="button" class="model-btn primary" data-act="activate" data-id="${model.id}">Использовать</button>
         <button type="button" class="model-btn danger" data-act="delete" data-id="${model.id}">Удалить</button>`;
-    }
+      }
 
-    return `
+      return `
       <div class="model-item ${isActive ? 'active' : ''}" data-model-id="${model.id}">
         <div class="model-name">${model.name}</div>
         <div class="model-desc">${model.description}</div>
@@ -51,20 +63,28 @@ export function renderModelList() {
           <span>📦 ${model.sizeLabel}</span>
           <span>⭐ ${stars(model.quality)}</span>
           <span>⚡ ${rockets(model.speed)}</span>
-          <span>💾 ~${ramGb} ГБ RAM</span>
+          <span>💾 ~${model.ramNeededGb} ГБ RAM</span>
         </div>
+        ${warn}
         <div class="model-actions">${actions}</div>
         <div class="model-progress" id="progress-${model.id}" style="display:none">
           <div class="model-progress-fill" style="width:0%"></div>
         </div>
         <div class="model-progress-text" id="progress-text-${model.id}" style="display:none"></div>
       </div>`;
-  }).join('');
+    }).join('');
 }
 
 async function downloadModel(id) {
   const model = AVAILABLE_MODELS.find((m) => m.id === id);
   if (!model) return;
+
+  if (!isModelRecommended(model)) {
+    const ok = confirm(
+      `Модель «${model.name}» требует ~${model.ramNeededGb} ГБ RAM. На этом устройстве может не хватить памяти. Скачать всё равно?`
+    );
+    if (!ok) return;
+  }
 
   const progressBar = document.getElementById('progress-' + id);
   const progressText = document.getElementById('progress-text-' + id);
@@ -72,28 +92,34 @@ async function downloadModel(id) {
   if (progressBar) progressBar.style.display = 'block';
   if (progressText) progressText.style.display = 'flex';
 
+  downloadingId = id;
+  renderModelList();
+  // re-show progress after re-render
+  const pb = document.getElementById('progress-' + id);
+  const pt = document.getElementById('progress-text-' + id);
+  if (pb) pb.style.display = 'block';
+  if (pt) pt.style.display = 'flex';
+
   try {
     setActiveModel(id);
-    // Force unload previous then load (loader uses getActiveModel)
     try {
       await unloadModel();
     } catch {}
-    // Progress via global loader UI + local bar (listen status if possible)
     const ok = await loadModel();
+    downloadingId = null;
     if (ok || isModelReady()) {
       markModelDownloaded(id);
       if (fill) fill.style.width = '100%';
-      if (progressText) progressText.innerHTML = '<span>Загружено</span><span>100%</span>';
       toast('Модель «' + model.name + '» загружена');
       renderModelList();
     } else {
       throw new Error('Загрузка не завершена');
     }
   } catch (e) {
+    downloadingId = null;
     console.error('downloadModel', e);
     toast('Ошибка: ' + (e?.message || 'не удалось скачать'));
-    if (progressBar) progressBar.style.display = 'none';
-    if (progressText) progressText.style.display = 'none';
+    renderModelList();
   }
 }
 
@@ -126,7 +152,7 @@ async function deleteModel(id) {
   }
   unmarkModelDownloaded(id);
   if (getActiveModel().id === id) {
-    setActiveModel('qwen-1.5b');
+    setActiveModel('qwen-0.5b');
   }
   renderModelList();
   toast('Модель удалена');
@@ -144,5 +170,11 @@ export function initModelSettings() {
     if (act === 'download') downloadModel(id);
     else if (act === 'activate') activateModel(id);
     else if (act === 'delete') deleteModel(id);
+    else if (act === 'cancel-dl') {
+      cancelLoad();
+      downloadingId = null;
+      toast('Загрузка отменена');
+      renderModelList();
+    }
   });
 }

@@ -1264,3 +1264,45 @@
   padding: 0 16px;
   line-height: 1.45;
 }
+
+/* Responsive chat / loading for Samsung A15 etc. */
+.chat-title {
+  font-size: clamp(13px, 3.5vw, 16px);
+}
+.msg-bubble {
+  font-size: clamp(14px, 3.8vw, 16px);
+  max-width: min(92%, 560px);
+  word-break: break-word;
+}
+.composer textarea {
+  font-size: clamp(15px, 4vw, 17px); /* avoid iOS zoom */
+  max-height: min(40vh, 160px);
+}
+.splash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 0 16px;
+}
+.splash-actions .btn {
+  min-width: 120px;
+  min-height: 44px;
+}
+.settings-panel, .modal, .agreement-card {
+  max-width: min(100vw - 24px, 480px);
+  max-height: min(90dvh, 90vh);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.model-warn {
+  margin-top: 8px;
+  font-size: 11.5px;
+  color: #ffb86c;
+}
+@media (max-width: 380px) {
+  .composer-wrap { padding-left: 8px; padding-right: 8px; }
+  .msg-row { padding-left: 8px; padding-right: 8px; }
+}
+/* keyboard: visualViewport handled in JS */

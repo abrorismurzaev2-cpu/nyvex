@@ -29,6 +29,23 @@ import {
 
 export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted, isNativeApp };
 
+/** Prefer WASM on weak Android / low RAM / few cores (Samsung A-series etc.) */
+export function shouldPreferWasm() {
+  try {
+    const cores = navigator.hardwareConcurrency || 4;
+    const mem = navigator.deviceMemory || 4;
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    const isWebView = /; wv\)/i.test(ua) || /Version\/\d+\.\d+.*Chrome\/\d+\.\d+\.\d+\.\d+/i.test(ua);
+    if (cores < 6) return true;
+    if (mem > 0 && mem < 6) return true;
+    if (isAndroid && mem <= 6) return true;
+    if (isWebView) return true;
+  } catch {}
+  return false;
+}
+
+
 let worker = null;
 let modelReady = false;
 let modelDevice = 'WASM';
@@ -429,7 +446,14 @@ export function cancelLoad() {
   loading = false;
   modelReady = false;
   if ($('loadStatus')) $('loadStatus').textContent = 'Загрузка отменена';
-  toast('Загрузка отменена');
+  const live = document.getElementById('loadLiveMeta');
+  if (live) {
+    live.textContent = 'Загрузка отменена. При следующем входе продолжится.';
+    live.style.opacity = '1';
+  }
+  const retry = document.getElementById('retryLoadBtn');
+  if (retry) retry.style.display = '';
+  toast('Загрузка отменена. Прогресс сохранён.');
   emitStatus();
 }
 
@@ -535,9 +559,10 @@ export async function loadModel(modelId) {
   }
 
   const hasWebGPU = typeof navigator !== 'undefined' && 'gpu' in navigator;
-  // Prefer WASM for stability (network + memory); GPU optional
-  const preferGpu = hasWebGPU;
+  // Weak phones (A15 etc.): always WASM — WebGPU often crashes or hangs
+  const preferGpu = hasWebGPU && !shouldPreferWasm();
   modelDevice = preferGpu ? 'WebGPU' : 'WASM';
+  console.log('[nyvex] preferGpu=', preferGpu, 'cores=', navigator.hardwareConcurrency, 'mem=', navigator.deviceMemory);
 
   const w = ensureWorker();
   if (w && useWorker) {
@@ -692,9 +717,9 @@ export function generateViaWorker(messages, options = {}) {
       setTimeout(() => {
         if (pendingGenerate.has(id)) {
           pendingGenerate.delete(id);
-          reject(new Error('Timeout генерации'));
+          reject(new Error('AI не отвечает. Попробуйте ещё раз или выберите модель «Быстрая».'));
         }
-      }, 120000);
+      }, 45000);
     });
   }
 

@@ -90,7 +90,7 @@ export async function generateReply(userText, history = [], opts = {}) {
       };
 
   const t0 = Date.now();
-  const fallback = 'Извините, произошла ошибка. Попробуйте ещё раз.';
+  const fallback = 'Не удалось получить ответ. Попробуйте ещё раз.';
 
   try {
     const messages = buildMessages(userText, history, system, deepThinking);
@@ -103,6 +103,15 @@ export async function generateReply(userText, history = [], opts = {}) {
     };
   } catch (e) {
     console.error('generateReply', e);
-    return { answer: fallback, thinking: null, ms: Date.now() - t0 };
+    const msg = String(e?.message || e || '');
+    let answer = fallback;
+    if (/timeout|не отвечает/i.test(msg)) {
+      answer = 'AI не отвечает. Попробуйте ещё раз или выберите модель «Быстрая» в настройках.';
+    } else if (/памят|memory|OOM/i.test(msg)) {
+      answer = 'Недостаточно памяти. Выберите модель «Быстрая» в настройках.';
+    } else if (/не загружен|not loaded/i.test(msg)) {
+      answer = 'AI не загружен. Откройте настройки и нажмите «Загрузить AI».';
+    }
+    return { answer, thinking: null, ms: Date.now() - t0 };
   }
 }

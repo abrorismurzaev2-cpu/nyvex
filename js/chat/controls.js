@@ -112,6 +112,25 @@ export function initControls() {
     if (!canSendMessage(state)) showPaymentModal();
   });
 
+  
+  // Keep input visible above soft keyboard (Android / iOS)
+  composerInput?.addEventListener('focus', () => {
+    setTimeout(() => {
+      try {
+        composerInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } catch {}
+    }, 300);
+  });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', () => {
+      if (document.activeElement === composerInput) {
+        try {
+          composerInput.scrollIntoView({ block: 'center' });
+        } catch {}
+      }
+    });
+  }
+
   sendBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
