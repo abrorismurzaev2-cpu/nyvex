@@ -13,6 +13,7 @@ import {
   refreshTrialCache,
 } from '../core/trial.js';
 import { notifyResponseReady, ensureNotificationPermission } from '../ui/notifications.js';
+import { speakWithEmotion, detectEmotion, getCosmoSettings, stopSpeaking } from '../ai/cosmo.js';
 
 let isGenerating = false;
 let deepThinking = false;
@@ -198,11 +199,17 @@ async function sendMessage() {
     const thinking = typeof result === 'object' ? result.thinking : null;
     const ms = typeof result === 'object' ? result.ms : 0;
     addMessageToCurrent('ai', answer, { thinking, thinkingMs: ms });
+    const emotion = detectEmotion(text, answer);
+    const meta = { thinking, thinkingMs: ms, emotion };
     if (answer && answer.length > 40) {
-      await appendMessageStream(answer, { thinking, thinkingMs: ms });
+      await appendMessageStream(answer, meta);
     } else {
-      appendMessage('ai', answer, true, { thinking, thinkingMs: ms });
+      appendMessage('ai', answer, true, meta);
     }
+    try {
+      const cs = getCosmoSettings();
+      if (cs.autoSpeak && answer) speakWithEmotion(answer, emotion);
+    } catch {}
     notifyResponseReady();
   } catch (e) {
     console.error('sendMessage', e);
@@ -235,6 +242,11 @@ function onMsgAction(e) {
     if (navigator.clipboard?.writeText) {
       navigator.clipboard.writeText(text).then(() => toast('Скопировано')).catch(() => toast('Ошибка'));
     }
+  } else if (act === 'speak') {
+    if (!text) return;
+    stopSpeaking();
+    speakWithEmotion(text, 'normal');
+    toast('Озвучиваю…');
   } else if (act === 'like') {
     msg.querySelector('[data-act="dislike"]')?.classList.remove('active');
     btn.classList.toggle('active');

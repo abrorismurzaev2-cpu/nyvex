@@ -4,6 +4,7 @@
  */
 import { MODEL, LIMITS } from '../core/config.js';
 import { isModelReady, generateViaWorker } from './loader.js';
+import { cosmoSystemPrompt } from './cosmo.js';
 
 const SYSTEM_THINK_PROMPT = `Ты — AI-ассистент NYVEX в режиме глубокого размышления.
 
@@ -69,7 +70,7 @@ export async function generateReply(userText, history = [], opts = {}) {
     };
   }
 
-  const system = deepThinking ? SYSTEM_THINK_PROMPT : MODEL.systemPrompt;
+  const system = deepThinking ? SYSTEM_THINK_PROMPT : (cosmoSystemPrompt() || MODEL.systemPrompt);
 
   const genOpts = deepThinking
     ? {

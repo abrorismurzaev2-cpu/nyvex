@@ -5,6 +5,7 @@ import { initModelSettings } from './models-settings.js';
 import { $ } from '../core/utils.js';
 import { storage } from '../core/storage.js';
 import { toast } from '../core/toast.js';
+import { getCosmoSettings, setCosmoSettings, getCharacter, testVoice, CHARACTERS } from '../ai/cosmo.js';
 import { clearAllHistory } from '../chat/history.js';
 import { onModelStatus, getModelStatus, getModelCacheSize, clearModelCache, isStoragePersisted } from '../ai/loader.js';
 import { clearAllNyvexData } from '../core/utils.js';
@@ -75,6 +76,7 @@ export function initSettings() {
   });
 
   onModelStatus((st) => updateAiStatus(st));
+  try { initCosmoSettings(); } catch (e) { console.warn('cosmo settings', e); }
   refreshCacheInfo();
   $('aiClearCacheBtn')?.addEventListener('click', async () => {
     if (!confirm('Удалить кэш AI с устройства? При следующем запуске модель скачается заново (~900 МБ).')) return;
@@ -211,4 +213,64 @@ async function refreshCacheInfo() {
   } catch {
     el.textContent = 'Статус AI: н/д';
   }
+}
+
+
+function syncCosmoUI() {
+  const s = getCosmoSettings();
+  const ch = getCharacter();
+  document.querySelectorAll('#cosmoChars .cosmo-char').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.char === s.character);
+  });
+  const tts = document.getElementById('cosmoTtsToggle');
+  const auto = document.getElementById('cosmoAutoToggle');
+  if (tts) tts.classList.toggle('on', !!s.enabled);
+  if (auto) auto.classList.toggle('on', !!s.autoSpeak);
+  const pitch = document.getElementById('cosmoPitch');
+  const rate = document.getElementById('cosmoRate');
+  const pv = document.getElementById('cosmoPitchVal');
+  const rv = document.getElementById('cosmoRateVal');
+  if (pitch) pitch.value = s.pitch;
+  if (rate) rate.value = s.rate;
+  if (pv) pv.textContent = Number(s.pitch).toFixed(2);
+  if (rv) rv.textContent = Number(s.rate).toFixed(2);
+}
+
+let cosmoSettingsBound = false;
+function initCosmoSettings() {
+  syncCosmoUI();
+  if (cosmoSettingsBound) return;
+  cosmoSettingsBound = true;
+  document.getElementById('cosmoChars')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-char]');
+    if (!btn) return;
+    setCosmoSettings({ character: btn.dataset.char });
+    syncCosmoUI();
+    toast('Характер: ' + (CHARACTERS[btn.dataset.char]?.name || ''));
+  });
+  document.getElementById('cosmoTtsToggle')?.addEventListener('click', () => {
+    const s = getCosmoSettings();
+    setCosmoSettings({ enabled: !s.enabled });
+    syncCosmoUI();
+  });
+  document.getElementById('cosmoAutoToggle')?.addEventListener('click', () => {
+    const s = getCosmoSettings();
+    setCosmoSettings({ autoSpeak: !s.autoSpeak });
+    syncCosmoUI();
+  });
+  document.getElementById('cosmoPitch')?.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    setCosmoSettings({ pitch: v });
+    const pv = document.getElementById('cosmoPitchVal');
+    if (pv) pv.textContent = v.toFixed(2);
+  });
+  document.getElementById('cosmoRate')?.addEventListener('input', (e) => {
+    const v = parseFloat(e.target.value);
+    setCosmoSettings({ rate: v });
+    const rv = document.getElementById('cosmoRateVal');
+    if (rv) rv.textContent = v.toFixed(2);
+  });
+  document.getElementById('cosmoTestBtn')?.addEventListener('click', () => {
+    try { testVoice(); } catch {}
+  });
 }
