@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="css/chat.css">
   <link rel="stylesheet" href="css/redesign.css">
   <link rel="stylesheet" href="css/settings.css">
+  <link rel="stylesheet" href="css/settings-glass.css">
   <link rel="stylesheet" href="css/agreement.css">
 </head>
 <body>
@@ -215,111 +216,193 @@
     </div>
   </div>
 
-  <!-- SETTINGS -->
-  <div class="settings-panel" id="settingsPanel">
-    <div class="settings-window">
-      <div class="settings-head">
-        <h3>Настройки</h3>
-        <button type="button" class="icon-btn" id="settingsClose" aria-label="Закрыть">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
+    <!-- SETTINGS (glass) -->
+  <div class="settings-panel modal-overlay" id="settingsPanel">
+    <div class="settings-window modal">
+      <div class="settings-head modal-head">
+        <h2>Настройки</h2>
+        <button type="button" class="modal-close" id="settingsClose" aria-label="Закрыть">×</button>
       </div>
-      <div class="settings-body">
-        <div class="setting-section-title">Подписка</div>
-        <div class="sub-block" id="subBlock">
-          <div class="sub-status" id="trialStatusLabel">Пробный период</div>
-          <div class="sub-progress"><div class="sub-progress-fill" id="trialProgress"></div></div>
-          <div class="sub-end" id="trialEndDate">—</div>
-          <div class="sub-actions">
-            <button type="button" class="btn btn-sm btn-primary" id="subscribeBtn">Оплатить 290 ₽ / 30 дней</button>
-            <button type="button" class="btn btn-sm btn-ghost" id="cancelSubBtn">Отменить автопродление</button>
+      <div class="settings-body modal-body">
+
+        <!-- Подписка -->
+        <div class="sub-hero" id="subBlock">
+          <div class="sub-hero-badge">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 1.5 Q13.2 10.8 22.5 12 Q13.2 13.2 12 22.5 Q10.8 13.2 1.5 12 Q10.8 10.8 12 1.5 Z"/>
+            </svg>
+            <span id="trialStatusLabel">Пробный период</span>
           </div>
-          <div id="paymentHistory" style="margin-top:10px;font-size:12px;color:var(--dim);"></div>
+          <h3>Оформите NYVEX Pro</h3>
+          <div class="sub-hero-desc">Полный доступ ко всем возможностям AI без ограничений</div>
+          <div class="sub-hero-price">
+            <span class="amount">290 ₽</span>
+            <span class="per">/ месяц</span>
+            <span class="old">499 ₽</span>
+          </div>
+          <div class="sub-progress-mini"><div class="sub-progress-fill" id="trialProgress"></div></div>
+          <div class="sub-hero-trial">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            <span id="trialEndDate">Осталось пробного периода. Далее 290 ₽ / 30 дней.</span>
+          </div>
+          <button type="button" class="sub-hero-btn" id="subscribeBtn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6"/>
+            </svg>
+            Оформить Pro · 290 ₽
+          </button>
+          <button type="button" class="sub-hero-cancel" id="cancelSubBtn">Отменить автопродление</button>
+          <div id="paymentHistory" style="margin-top:12px;font-size:12px;color:#52525b;"></div>
         </div>
 
-        <div class="setting-section-title">AI</div>
-        <div class="sub-block" id="aiStatusBlock">
-          <div class="sub-status" id="aiLoadStatus">Загрузка AI…</div>
-          <div class="sub-progress"><div class="sub-progress-fill" id="aiLoadBar" style="width:0%"></div></div>
-          <div class="sub-end" id="aiLoadMeta" style="margin-top:8px;"></div>
-          <div class="sub-actions" style="margin-top:10px;">
-            <button type="button" class="btn btn-sm btn-primary" id="aiLoadBtn">Загрузить AI</button>
-          </div>
-          <div class="sub-end" id="aiCacheSize" style="margin-top:10px;">Кэш модели: …</div>
-          <div class="sub-actions" style="margin-top:8px;">
-            <button type="button" class="btn btn-sm btn-ghost" id="aiClearCacheBtn">Очистить кэш модели</button>
-          </div>
-        </div>
-
-        <div class="setting-section-title">AI модель</div>
-        <div class="model-list" id="modelList"></div>
-
-        <div class="setting-item" data-setting="history">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Сохранять историю</div>
-            <div class="setting-item-desc">Хранить чаты на этом устройстве</div>
-          </div>
-          <div class="switch on" data-switch></div>
-        </div>
-        <div class="setting-item" data-setting="animations">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Анимации</div>
-            <div class="setting-item-desc">Плавные переходы интерфейса</div>
-          </div>
-          <div class="switch on" data-switch></div>
-        </div>
-        <div class="setting-item" id="clearHistoryBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Очистить историю</div>
-            <div class="setting-item-desc">Удалить все чаты с устройства</div>
-          </div>
-        </div>
-        <div class="setting-item" id="exportDataBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Экспорт данных</div>
-            <div class="setting-item-desc">Скачать JSON</div>
-          </div>
-        </div>
-        <div class="setting-item danger" id="deleteAccountBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">Удалить все данные</div>
-            <div class="setting-item-desc">Очистить localStorage устройства</div>
+        <!-- AI status -->
+        <div class="settings-group">
+          <div class="settings-label">Статус AI</div>
+          <div class="ai-status-card" id="aiStatusBlock">
+            <div class="sub-status" id="aiLoadStatus">Загрузка AI…</div>
+            <div class="sub-progress"><div class="sub-progress-fill" id="aiLoadBar" style="width:0%"></div></div>
+            <div class="sub-end" id="aiLoadMeta"></div>
+            <div class="sub-actions">
+              <button type="button" class="model-btn primary" id="aiLoadBtn">Загрузить AI</button>
+              <button type="button" class="model-btn" id="aiClearCacheBtn">Очистить кэш</button>
+            </div>
+            <div class="sub-end" id="aiCacheSize" style="margin-top:10px;">Кэш модели: …</div>
           </div>
         </div>
 
-        <div class="setting-section-title">О приватности</div>
-        <div class="privacy-note">NYVEX работает локально. Ваши запросы не покидают устройство. AI, который не смотрит на тебя.</div>
+        <!-- AI модели -->
+        <div class="settings-group">
+          <div class="settings-label">AI модель</div>
+          <div class="model-list" id="modelList"></div>
+        </div>
 
-        <div class="setting-section-title">Правовая информация</div>
-        <a class="setting-item" href="legal/offer.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Публичная оферта</div></div>
-        </a>
-        <a class="setting-item" href="legal/requisites.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Реквизиты</div></div>
-        </a>
-        <a class="setting-item" href="legal/delivery.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Как получить доступ</div></div>
-        </a>
-        <a class="setting-item" href="legal/privacy.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Конфиденциальность</div></div>
-        </a>
-        <a class="setting-item" href="legal/terms.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Условия</div></div>
-        </a>
-        <a class="setting-item" href="legal/cookies.html" target="_blank" rel="noopener">
-          <div class="setting-item-info"><div class="setting-item-title">Cookie</div></div>
-        </a>
-
-        <div class="setting-item" id="aboutAppBtn">
-          <div class="setting-item-info">
-            <div class="setting-item-title">О приложении</div>
-            <div class="setting-item-desc">Версия 2.0 · без регистрации</div>
+        <!-- Уведомления / переключатели -->
+        <div class="settings-group">
+          <div class="settings-label">Интерфейс</div>
+          <div class="setting-item" data-setting="history">
+            <div class="setting-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <div class="setting-title">Сохранять историю</div>
+              <div class="setting-desc">Хранить чаты на этом устройстве</div>
+            </div>
+            <div class="toggle on" data-switch></div>
+          </div>
+          <div class="setting-item" data-setting="animations">
+            <div class="setting-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l2.5 5 5.5.8-4 3.9.9 5.5L12 14.7l-4.9 2.5.9-5.5-4-3.9 5.5-.8z"/>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <div class="setting-title">Анимации интерфейса</div>
+              <div class="setting-desc">Плавные переходы и эффекты</div>
+            </div>
+            <div class="toggle on" data-switch></div>
           </div>
         </div>
 
+        <!-- Данные -->
+        <div class="settings-group">
+          <div class="settings-label">Данные</div>
+          <div class="setting-item" id="exportDataBtn">
+            <div class="setting-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <div class="setting-title">Экспорт данных</div>
+              <div class="setting-desc">Скачать историю в формате JSON</div>
+            </div>
+            <div class="setting-arrow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 6l6 6-6 6"/>
+              </svg>
+            </div>
+          </div>
+          <div class="setting-item danger" id="clearHistoryBtn">
+            <div class="setting-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <div class="setting-title">Очистить историю</div>
+              <div class="setting-desc">Удалить все чаты с устройства</div>
+            </div>
+          </div>
+          <div class="setting-item danger" id="deleteAccountBtn">
+            <div class="setting-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>
+              </svg>
+            </div>
+            <div class="setting-info">
+              <div class="setting-title">Удалить все данные</div>
+              <div class="setting-desc">Полный сброс приложения на устройстве</div>
+            </div>
+          </div>
         </div>
+
+        <!-- Приватность -->
+        <div class="settings-group">
+          <div class="settings-label">О приватности</div>
+          <div class="privacy-note">NYVEX работает локально. Ваши запросы не покидают устройство. AI, который не смотрит на тебя.</div>
+        </div>
+
+        <!-- Правовая -->
+        <div class="settings-group">
+          <div class="settings-label">Правовая информация</div>
+          <a class="setting-item" href="legal/offer.html" target="_blank" rel="noopener">
+            <div class="setting-info"><div class="setting-title">Публичная оферта</div></div>
+            <div class="setting-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></div>
+          </a>
+          <a class="setting-item" href="legal/requisites.html" target="_blank" rel="noopener">
+            <div class="setting-info"><div class="setting-title">Реквизиты</div></div>
+            <div class="setting-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></div>
+          </a>
+          <a class="setting-item" href="legal/privacy.html" target="_blank" rel="noopener">
+            <div class="setting-info"><div class="setting-title">Конфиденциальность</div></div>
+            <div class="setting-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></div>
+          </a>
+          <a class="setting-item" href="legal/terms.html" target="_blank" rel="noopener">
+            <div class="setting-info"><div class="setting-title">Условия</div></div>
+            <div class="setting-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></div>
+          </a>
+          <a class="setting-item" href="legal/cookies.html" target="_blank" rel="noopener">
+            <div class="setting-info"><div class="setting-title">Cookie</div></div>
+            <div class="setting-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M9 6l6 6-6 6"/></svg></div>
+          </a>
+        </div>
+
+        <!-- About -->
+        <div class="settings-group">
+          <div class="about-card" id="aboutAppBtn">
+            <div class="about-logo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/>
+                <path d="M12 3 L12 21"/>
+                <circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/>
+              </svg>
+            </div>
+            <div class="about-name">NYVEX</div>
+            <div class="about-version">Версия 2.4.0</div>
+            <div class="about-tagline">AI, который не смотрит на тебя. Работает офлайн. Данные — только у тебя.</div>
+          </div>
+        </div>
+
+      </div>
     </div>
   </div>
+
 
   <div class="settings-panel" id="trialModal">
     <div class="settings-window" style="max-width:400px;">

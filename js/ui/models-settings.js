@@ -60,22 +60,33 @@ export function renderModelList() {
         <button type="button" class="model-btn danger" data-act="delete" data-id="${model.id}">Удалить</button>`;
       }
 
+            const recBadge = (model.id === rec.id || model.default)
+        ? '<span class="model-badge">Рекомендуется</span>'
+        : '';
       return `
-      <div class="model-item ${isActive ? 'active' : ''}" data-model-id="${model.id}">
-        <div class="model-name">${model.name}${model.default ? ' · Рекомендуется' : ''}</div>
-        <div class="model-desc">${model.description}</div>
-        <div class="model-meta">
-          
-          <span>📦 ${model.sizeLabel}</span>
-          <span>💾 ~${model.ramNeededGb} ГБ RAM</span>
-          <span>⭐ ${stars(model.quality)}</span>
+      <div class="model-card model-item ${isActive ? 'active' : ''}" data-model-id="${model.id}">
+        <div class="model-head">
+          <div class="model-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9z"/>
+            </svg>
+          </div>
+          <div class="model-info">
+            <div class="model-title model-name">${model.name} ${recBadge}</div>
+            <div class="model-desc">${model.description}</div>
+          </div>
+        </div>
+        <div class="model-specs model-meta">
+          <div class="model-spec">${model.sizeLabel}</div>
+          <div class="model-spec">~${model.ramNeededGb} ГБ RAM</div>
+          <div class="model-spec">${'★'.repeat(model.quality || 1)}</div>
         </div>
         ${warn}
         <div class="model-actions">${actions}</div>
         <div class="model-progress" id="progress-${model.id}" style="display:none">
           <div class="model-progress-fill" style="width:0%"></div>
         </div>
-        <div class="model-progress-text" id="progress-text-${model.id}" style="display:none"></div>
+        <div class="model-progress-text model-progress-info" id="progress-text-${model.id}" style="display:none"></div>
       </div>`;
     }).join('');
 }

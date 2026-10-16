@@ -42,7 +42,7 @@ export function initSettings() {
       if (key === 'history') settings.history = sw.classList.contains('on');
       if (key === 'animations') settings.animations = sw.classList.contains('on');
       storage.setSettings(settings);
-      toast((item?.querySelector('.setting-item-title')?.textContent || '') + ' · ' + (sw.classList.contains('on') ? 'вкл' : 'выкл'));
+      toast((item?.querySelector('.setting-title, .setting-item-title')?.textContent || '') + ' · ' + (sw.classList.contains('on') ? 'вкл' : 'выкл'));
     });
   });
 
