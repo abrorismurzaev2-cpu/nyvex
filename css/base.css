@@ -142,28 +142,82 @@
 }
 
 :root {
-  --bg: #0e0e11;
-  --bg-2: #14141a;
-  --bg-3: #1a1a22;
-  --side: #0a0a0e;
-  --line: rgba(255, 255, 255, 0.07);
-  --line-2: rgba(255, 255, 255, 0.11);
-  --txt: #ececf1;
-  --dim: #8e8ea0;
-  --dim-2: #6e6e80;
-  --accent: #7c5cff;
-  --accent-2: #00d9ff;
-  --green: #4ade80;
-  --red: #ff5c7a;
-  --gold: #ffb340;
+  /* Design system v3 — ChatGPT/Claude-like premium dark */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #121218;
+  --bg-tertiary: #1a1a24;
+  --bg-elevated: #20202c;
+
+  --text-primary: #f5f5f7;
+  --text-secondary: #a1a1aa;
+  --text-tertiary: #52525b;
+
+  --accent-primary: #7c5cff;
+  --accent-secondary: #00d9ff;
+  --accent-gradient: linear-gradient(135deg, #7c5cff 0%, #00d9ff 100%);
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #ff5c7a;
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 24px rgba(124, 92, 255, 0.35);
+
+  --radius-sm: 10px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-pill: 24px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+
+  --font: 'Manrope', system-ui, -apple-system, sans-serif;
+  --fs-h1: clamp(24px, 4vw, 42px);
+  --fs-h2: clamp(20px, 3vw, 28px);
+  --fs-body: 15px;
+  --fs-small: 13px;
+  --fs-tiny: 11px;
+
+  --content-max: 760px;
+  --sidebar-w: 260px;
+  --topbar-h: 56px;
+
+  /* Backward-compatible aliases used across existing CSS */
+  --bg: var(--bg-primary);
+  --bg-2: var(--bg-secondary);
+  --bg-3: var(--bg-tertiary);
+  --side: var(--bg-secondary);
+  --line: var(--border-subtle);
+  --line-2: var(--border-default);
+  --txt: var(--text-primary);
+  --dim: var(--text-secondary);
+  --dim-2: var(--text-tertiary);
+  --accent: var(--accent-primary);
+  --accent-2: var(--accent-secondary);
+  --green: var(--success);
+  --red: var(--error);
+  --gold: var(--warning);
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
-  --radius-sm: 10px;
-  --radius: 14px;
-  --radius-lg: 20px;
-  --radius-xl: 24px;
+
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
   --dur: 0.25s;

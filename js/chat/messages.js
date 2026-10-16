@@ -12,14 +12,30 @@ export function renderWelcome() {
   inner.innerHTML = `
     <div class="welcome">
       <div class="welcome-logo">${LOGO_SVG}</div>
-      <div class="welcome-brand">NYVEX</div>
-      <div class="welcome-title">Привет! <span>Чем помочь?</span></div>
-      <div class="welcome-sub">7 дней бесплатно · без регистрации · AI на устройстве</div>
+      <div class="welcome-title">Привет!</div>
+      <div class="welcome-sub">Чем могу помочь?</div>
+      <div class="welcome-usp">🔒 Приватный AI · Работает офлайн</div>
       <div class="welcome-status ${ready ? '' : 'loading'}">
         <span class="st-dot"></span>
         <span>${ready ? 'AI готов' : 'Загрузка AI…'}</span>
       </div>
+      <div class="welcome-chips chip-row">
+        <button type="button" class="chip welcome-chip" data-chip="Объясни простыми словами, что такое нейросеть">Что такое нейросеть?</button>
+        <button type="button" class="chip welcome-chip" data-chip="Помоги написать короткое письмо">Написать письмо</button>
+        <button type="button" class="chip welcome-chip" data-chip="Дай 5 идей для ужина">Идеи для ужина</button>
+        <button type="button" class="chip welcome-chip" data-chip="Переведи на английский: Привет, как дела?">Перевод</button>
+      </div>
     </div>`;
+  // chips → fill composer
+  inner.querySelectorAll('[data-chip]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = document.getElementById('composerInput');
+      if (!input) return;
+      input.value = btn.getAttribute('data-chip') || '';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.focus();
+    });
+  });
 }
 
 export function appendMessage(role, text, animate = true, meta = null) {

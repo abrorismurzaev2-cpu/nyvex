@@ -23,6 +23,7 @@
   <link rel="stylesheet" href="css/animations.css">
   <link rel="stylesheet" href="css/auth.css">
   <link rel="stylesheet" href="css/chat.css">
+  <link rel="stylesheet" href="css/redesign.css">
   <link rel="stylesheet" href="css/settings.css">
   <link rel="stylesheet" href="css/agreement.css">
 </head>
@@ -152,7 +153,11 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
           </button>
           <div class="chat-title" id="chatTitle">Новый чат</div>
-          <div class="model-badge" id="modelBadge">nyvex</div>
+          <div class="model-badge" id="modelBadge" hidden></div>
+          <div class="privacy-pill" id="privacyPill" title="AI, который не смотрит на тебя">
+            <span class="dot"></span><span class="label">Приватно</span>
+          </div>
+          <span class="ai-status" id="aiStatusTop">AI готов</span>
           <button type="button" class="trial-badge" id="trialBadge" title="Пробный период">7 дн</button>
         </div>
         <div class="chat-top-right">
@@ -182,7 +187,7 @@
             </svg>
           </button>
         </div>
-        <div class="composer-hint">NYVEX · ответы локально на устройстве</div>
+        <div class="composer-hint">AI может ошибаться. Проверяйте важное. · Приватно · Офлайн после загрузки</div>
       </div>
     </main>
   </div>
@@ -281,6 +286,9 @@
             <div class="setting-item-desc">Очистить localStorage устройства</div>
           </div>
         </div>
+
+        <div class="setting-section-title">О приватности</div>
+        <div class="privacy-note">NYVEX работает локально. Ваши запросы не покидают устройство. AI, который не смотрит на тебя.</div>
 
         <div class="setting-section-title">Правовая информация</div>
         <a class="setting-item" href="legal/offer.html" target="_blank" rel="noopener">
