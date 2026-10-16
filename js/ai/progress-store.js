@@ -14,7 +14,7 @@ export function saveProgressMeta(meta) {
     percent: meta.percent || 0,
     file: meta.file || '',
     ready: !!meta.ready,
-    version: '1.5b-q4',
+    version: 'llama32-1b-q4',
   };
   try {
     localStorage.setItem(LS_KEY, JSON.stringify(data));

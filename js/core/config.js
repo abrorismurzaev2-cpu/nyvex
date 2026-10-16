@@ -17,7 +17,7 @@ export const STORAGE_KEYS = {
 };
 
 /** Internal model id — never show in UI */
-export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+export const MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
 export const DEFAULT_MODEL_ID = MODEL_ID;
 
 export const MODEL = {
@@ -30,12 +30,12 @@ export const MODEL = {
   topK: 40,
   repetitionPenalty: 1.05,
     systemPrompt: `Ты — вежливый русскоязычный AI-ассистент NYVEX.
-
 ПРАВИЛА:
-1. Отвечай в основном на русском языке.
-2. Будь кратким — 2–4 предложения.
+1. Отвечай преимущественно на русском языке.
+2. Будь кратким — 2-4 предложения.
 3. Отвечай по делу, без лишних вступлений.
-4. Если не знаешь ответа — честно скажи об этом.`,
+4. Если не знаешь ответа — честно скажи об этом.
+5. Не используй мат, не давай опасных советов.`,
   thinkingSystemAdd: `Сначала рассуждай в <thinking>...</thinking>, затем ответ в <answer>...</answer>.`,
 };
 

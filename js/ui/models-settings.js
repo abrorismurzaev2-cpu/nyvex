@@ -30,7 +30,7 @@ export function renderModelList() {
 
   const activeId = getActiveModel().id;
   const ram = getDeviceMemoryGb();
-  const hint = `<p class="model-hint">Для большинства телефонов подходит «Быстрая» или «Умная». «Мощная» — только для флагманов (6+ ГБ RAM). На этом устройстве ≈${ram} ГБ RAM.</p>`;
+  const hint = `<p class="model-hint">3 модели AI на выбор — от Meta и сообщества. Для большинства телефонов подходит «Умная». «Мощная» — для флагманов (6+ ГБ RAM). На этом устройстве ≈${ram} ГБ RAM.</p>`;
 
   container.innerHTML =
     hint +
@@ -57,13 +57,13 @@ export function renderModelList() {
 
       return `
       <div class="model-item ${isActive ? 'active' : ''}" data-model-id="${model.id}">
-        <div class="model-name">${model.name}</div>
+        <div class="model-name">${model.name}${model.default ? ' · Рекомендуется' : ''}</div>
         <div class="model-desc">${model.description}</div>
         <div class="model-meta">
+          <span>${model.vendor || ''}</span>
           <span>📦 ${model.sizeLabel}</span>
-          <span>⭐ ${stars(model.quality)}</span>
-          <span>⚡ ${rockets(model.speed)}</span>
           <span>💾 ~${model.ramNeededGb} ГБ RAM</span>
+          <span>⭐ ${stars(model.quality)}</span>
         </div>
         ${warn}
         <div class="model-actions">${actions}</div>
@@ -152,7 +152,7 @@ async function deleteModel(id) {
   }
   unmarkModelDownloaded(id);
   if (getActiveModel().id === id) {
-    setActiveModel('qwen-0.5b');
+    setActiveModel('llama-3.2-1b');
   }
   renderModelList();
   toast('Модель удалена');

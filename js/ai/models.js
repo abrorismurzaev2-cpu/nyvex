@@ -1,48 +1,51 @@
 /**
- * NYVEX — catalog of downloadable on-device models (HF / Transformers.js)
- * 3B uses Coder variant — plain Qwen2.5-3B-Instruct is not on onnx-community.
+ * NYVEX — catalog of downloadable on-device models (Transformers.js / ONNX)
+ * TinyLlama + Meta Llama 3.2 (ONNX for Transformers.js)
  */
 export const AVAILABLE_MODELS = [
   {
-    id: 'qwen-0.5b',
+    id: 'tinyllama-1.1b',
     name: 'Быстрая',
-    description: 'Мгновенные ответы · ~1.5 ГБ RAM · для любых телефонов',
-    hfId: 'onnx-community/Qwen2.5-0.5B-Instruct',
-    size: 350 * 1024 * 1024,
-    sizeLabel: '≈350 МБ',
+    description: 'Мгновенные ответы для простых задач',
+    hfId: 'onnx-community/TinyLlama-1.1B-Chat-v1.0-ONNX',
+    size: 650 * 1024 * 1024,
+    sizeLabel: '≈650 МБ',
     quality: 2,
     speed: 5,
     ramNeededGb: 1.5,
     minDeviceMemoryGb: 2,
     dtype: 'q4',
-    default: true,
-  },
-  {
-    id: 'qwen-1.5b',
-    name: 'Умная',
-    description: 'Баланс скорости и качества · ~2.5 ГБ RAM',
-    hfId: 'onnx-community/Qwen2.5-1.5B-Instruct',
-    size: 900 * 1024 * 1024,
-    sizeLabel: '≈900 МБ',
-    quality: 3,
-    speed: 3,
-    ramNeededGb: 2.5,
-    minDeviceMemoryGb: 4,
-    dtype: 'q4',
+    vendor: 'TinyLlama',
     default: false,
   },
   {
-    id: 'qwen-3b',
+    id: 'llama-3.2-1b',
+    name: 'Умная',
+    description: 'Баланс скорости и качества · рекомендуем',
+    hfId: 'onnx-community/Llama-3.2-1B-Instruct-ONNX',
+    size: 800 * 1024 * 1024,
+    sizeLabel: '≈800 МБ',
+    quality: 3,
+    speed: 4,
+    ramNeededGb: 2,
+    minDeviceMemoryGb: 3,
+    dtype: 'q4',
+    vendor: 'Meta',
+    default: true,
+  },
+  {
+    id: 'llama-3.2-3b',
     name: 'Мощная',
-    description: 'Лучшее качество · ~5 ГБ RAM · флагман',
-    hfId: 'onnx-community/Qwen2.5-Coder-3B-Instruct',
-    size: 1800 * 1024 * 1024,
-    sizeLabel: '≈1.8 ГБ',
+    description: 'Максимальное качество для флагманов',
+    hfId: 'onnx-community/Llama-3.2-3B-Instruct-ONNX',
+    size: 2500 * 1024 * 1024,
+    sizeLabel: '≈2.5 ГБ',
     quality: 4,
     speed: 2,
-    ramNeededGb: 5,
+    ramNeededGb: 4,
     minDeviceMemoryGb: 6,
     dtype: 'q4',
+    vendor: 'Meta',
     default: false,
   },
 ];
@@ -64,11 +67,13 @@ export function isModelRecommended(model) {
 }
 
 export function getActiveModel() {
-  let id = 'qwen-0.5b';
+  let id = 'llama-3.2-1b';
   try {
-    id = localStorage.getItem(KEY_ACTIVE) || 'qwen-0.5b';
+    id = localStorage.getItem(KEY_ACTIVE) || 'llama-3.2-1b';
   } catch {}
-  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
+  // migrate old qwen ids
+  if (String(id).startsWith('qwen')) id = 'llama-3.2-1b';
+  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS.find((m) => m.default) || AVAILABLE_MODELS[0];
 }
 
 export function setActiveModel(id) {

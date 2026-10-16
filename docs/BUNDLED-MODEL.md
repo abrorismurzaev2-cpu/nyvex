@@ -1,19 +1,13 @@
 # Модели AI
 
-Модель **не встроена** в APK (из‑за проблем с локальным путём в WebView).
-
-## Поведение
-
-1. Первый запуск → экран соглашения  
-2. Скачивание активной модели с HuggingFace (кэш браузера / WebView)  
-3. Повторный запуск — из Cache API  
+Модель **не встроена** в APK — скачивается при первом запуске с HuggingFace.
 
 ## Каталог (`js/ai/models.js`)
 
 | ID | Название | HF | Размер |
 |----|----------|-----|--------|
-| qwen-0.5b | Быстрая | onnx-community/Qwen2.5-0.5B-Instruct | ~350 МБ |
-| qwen-1.5b | Умная | onnx-community/Qwen2.5-1.5B-Instruct | ~900 МБ |
-| qwen-3b | Мощная | onnx-community/Qwen2.5-3B-Instruct | ~2.5 ГБ |
+| tinyllama-1.1b | Быстрая | onnx-community/TinyLlama-1.1B-Chat-v1.0-ONNX | ~650 МБ |
+| llama-3.2-1b | Умная (по умолчанию) | onnx-community/Llama-3.2-1B-Instruct-ONNX | ~800 МБ |
+| llama-3.2-3b | Мощная | onnx-community/Llama-3.2-3B-Instruct-ONNX | ~2.5 ГБ |
 
-Переключение: Настройки → AI модель.
+Производители: TinyLlama (сообщество), Meta (Llama 3.2).  

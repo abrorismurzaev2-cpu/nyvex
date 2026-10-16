@@ -8,7 +8,7 @@ installResumeFetch();
 
 let pipeline;
 let env;
-let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
+let MODEL_ID = 'onnx-community/Llama-3.2-1B-Instruct-ONNX';
 let DTYPE = 'q4';
 let generator = null;
 let device = 'wasm';
