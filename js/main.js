@@ -7,6 +7,7 @@ import { hasAcceptedAgreement, setupAgreement } from './ui/agreement.js';
 import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
 import { loadModel, cancelLoad, isModelReady, isLoading, getModelState } from './ai/loader.js';
+import { setActiveModel, isModelDownloaded, getActiveModel } from './ai/models.js';
 import { isNativeApp } from './core/platform.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
@@ -116,6 +117,13 @@ async function boot() {
 
 async function continueModelBoot() {
   try {
+    // Always ensure weakest model is selected for first auto-download
+    try {
+      const active = getActiveModel();
+      if (!isModelDownloaded(active.id)) {
+        setActiveModel('fast');
+      }
+    } catch {}
     // Model splash: logo-only if cached, full progress if first download
     showScreen('loading');
     let modelState = 'not-downloaded';

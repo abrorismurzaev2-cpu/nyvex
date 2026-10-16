@@ -18,7 +18,8 @@ export const AVAILABLE_MODELS = [
     minDeviceMemoryGb: 2,
     dtype: 'q4',
     vendor: '',
-    default: false,
+    default: true,
+    isDefault: true,
   },
   {
     id: 'smart',
@@ -33,7 +34,7 @@ export const AVAILABLE_MODELS = [
     minDeviceMemoryGb: 3,
     dtype: 'q4',
     vendor: '',
-    default: true,
+    default: false,
   },
   {
     id: 'strong',
@@ -82,12 +83,13 @@ export function getActiveModel() {
   if (id && String(id).startsWith('llama')) id = null;
   if (id && String(id).startsWith('tinyllama')) id = null;
   if (!id) {
-    id = getRecommendedModelId();
+    // Always start with weakest model for first download
+    id = 'fast';
     try {
       localStorage.setItem(KEY_ACTIVE, id);
     } catch {}
   }
-  return AVAILABLE_MODELS.find((m) => m.id === id) || getRecommendedModel();
+  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
 }
 
 export function setActiveModel(id) {

@@ -109,29 +109,29 @@ async function ensureTransformers() {
     env.cacheDir = 'nyvex-model-cache-v3';
   } catch {}
 
+  // Always prefer non-SIMD ORT 1.14 — works on Samsung A15 / WebView / older Chrome
   const simd = detectSimd();
-  backend = simd ? 'wasm-simd' : 'wasm-no-simd';
+  backend = 'wasm-no-simd';
 
   try {
     if (!env.backends) env.backends = {};
     if (!env.backends.onnx) env.backends.onnx = {};
     if (!env.backends.onnx.wasm) env.backends.onnx.wasm = {};
     const wasm = env.backends.onnx.wasm;
-    if (!simd) {
-      wasm.simd = false;
-      wasm.numThreads = 1;
-      wasm.proxy = false;
-      wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
-    } else {
-      wasm.simd = true;
-      wasm.numThreads = Math.min(self.navigator?.hardwareConcurrency || 2, 4);
-      wasm.proxy = false;
-    }
+    wasm.simd = false;
+    wasm.numThreads = 1;
+    wasm.proxy = false;
+    wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
   } catch (e) {
     console.warn('[nyvex-worker] onnx env', e);
   }
 
-  post({ type: 'progress', status: 'init', message: simd ? 'WASM' : 'Режим совместимости · WASM', pct: 1 });
+  post({
+    type: 'progress',
+    status: 'init',
+    message: simd ? 'WASM · совместимость' : 'Режим совместимости · WASM',
+    pct: 1,
+  });
 }
 
 async function tryPipeline(remoteHost) {
@@ -255,6 +255,7 @@ self.onmessage = async (e) => {
         top_k: opts.top_k ?? 40,
         do_sample: true,
         repetition_penalty: opts.repetition_penalty ?? 1.05,
+        return_full_text: false,
       });
       const timeoutMs = 45000;
       const output = await Promise.race([

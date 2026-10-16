@@ -18,6 +18,19 @@ export function initSettings() {
     console.warn('model settings', e);
   }
   const panel = $('settingsPanel');
+  const overlay = $('settingsOverlay');
+
+  function openSettingsPanel() {
+    panel?.classList.add('show');
+    overlay?.classList.add('show');
+    try { document.body.style.overflow = 'hidden'; } catch {}
+  }
+  function closeSettingsPanel() {
+    panel?.classList.remove('show');
+    overlay?.classList.remove('show');
+    try { document.body.style.overflow = ''; } catch {}
+  }
+
   $('settingsBtn')?.addEventListener('click', async () => {
     const st = await refreshTrialCache();
     refreshSubUI(st);
@@ -25,11 +38,12 @@ export function initSettings() {
     try {
       initModelSettings();
     } catch {}
-    panel?.classList.add('show');
+    openSettingsPanel();
   });
-  $('settingsClose')?.addEventListener('click', () => panel?.classList.remove('show'));
+  $('settingsClose')?.addEventListener('click', () => closeSettingsPanel());
+  overlay?.addEventListener('click', () => closeSettingsPanel());
   panel?.addEventListener('click', (e) => {
-    if (e.target === panel) panel.classList.remove('show');
+    if (e.target === panel) closeSettingsPanel();
   });
 
   document.querySelectorAll('[data-switch]').forEach((sw) => {
@@ -57,7 +71,7 @@ export function initSettings() {
   $('clearHistoryBtn')?.addEventListener('click', () => {
     if (!confirm('Удалить всю историю чатов?')) return;
     clearAllHistory();
-    panel?.classList.remove('show');
+    closeSettingsPanel();
   });
 
   onModelStatus((st) => updateAiStatus(st));
@@ -105,7 +119,7 @@ export function initSettings() {
       return;
     }
     const n = clearAllNyvexData();
-    panel?.classList.remove('show');
+    closeSettingsPanel();
     toast('Удалено ключей: ' + n);
     location.reload();
   });

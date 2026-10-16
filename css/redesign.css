@@ -1023,3 +1023,78 @@ button.model-btn.danger {
     -webkit-backdrop-filter: blur(16px) saturate(150%);
   }
 }
+
+/* ========== Sidebar fixed layout ========== */
+.sidebar {
+  display: flex !important;
+  flex-direction: column !important;
+  height: 100% !important;
+  height: 100dvh !important;
+  padding: 16px !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  box-sizing: border-box;
+}
+
+.sidebar-head {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+  flex-shrink: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.sidebar-action {
+  padding: 16px 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.sidebar .new-chat {
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding: 0 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #7c5cff, #00d9ff) !important;
+  color: #fff !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  box-shadow: 0 8px 24px rgba(124,92,255,0.4) !important;
+  margin: 0 !important;
+}
+
+.sidebar-history {
+  flex: 1 1 auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: 0 !important;
+  margin: 0 -4px !important;
+  padding: 0 4px !important;
+}
+
+.sidebar-footer {
+  padding-top: 14px !important;
+  border-top: 1px solid rgba(255,255,255,0.06) !important;
+  flex-shrink: 0 !important;
+}
+
+.sb-sub-hint {
+  font-size: 11px;
+  color: #52525b;
+  text-align: center;
+  line-height: 1.4;
+  padding: 4px 0;
+}
+
+.sb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

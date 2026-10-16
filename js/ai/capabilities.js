@@ -56,17 +56,12 @@ export function applyOnnxEnv(env, backend) {
     if (!env.backends.onnx.wasm) env.backends.onnx.wasm = {};
 
     const wasm = env.backends.onnx.wasm;
-    if (backend === 'wasm-no-simd') {
-      wasm.simd = false;
-      wasm.numThreads = 1;
-      wasm.proxy = false;
-      // Non-SIMD ORT 1.14
-      wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
-    } else {
-      wasm.simd = true;
-      wasm.numThreads = Math.min(navigator.hardwareConcurrency || 2, 4);
-      wasm.proxy = false;
-    }
+    // Prefer non-SIMD for broad device support (Android WebView)
+    wasm.simd = false;
+    wasm.numThreads = 1;
+    wasm.proxy = false;
+    wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.14.0/dist/';
+
   } catch (e) {
     console.warn('[nyvex] applyOnnxEnv', e);
   }
@@ -84,8 +79,8 @@ export function backendLabel(backend) {
  */
 export function getRecommendedModelId() {
   const { memory: ram, threads: cores, isMobile, webgpu } = getDeviceCaps();
-  if (ram < 4 || cores < 4 || (isMobile && !webgpu)) return 'fast';
-  if (ram < 6 || !webgpu) return 'smart';
+  // Default path: weakest model for reliability / first download
+  if (ram < 6 || cores < 6 || isMobile || !webgpu) return 'fast';
   return 'smart';
 }
 

@@ -747,6 +747,7 @@ export function generateViaWorker(messages, options = {}) {
         top_p: options.top_p ?? MODEL.topP,
         do_sample: true,
         repetition_penalty: options.repetition_penalty ?? MODEL.repetitionPenalty,
+        return_full_text: false,
       });
       let reply = '';
       if (Array.isArray(output) && output[0]?.generated_text != null) {

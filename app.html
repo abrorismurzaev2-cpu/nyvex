@@ -26,6 +26,7 @@
   <link rel="stylesheet" href="css/redesign.css">
   <link rel="stylesheet" href="css/settings.css">
   <link rel="stylesheet" href="css/settings-glass.css">
+  <link rel="stylesheet" href="css/settings-panel.css">
   <link rel="stylesheet" href="css/agreement.css">
 </head>
 <body>
@@ -135,17 +136,24 @@
         </button>
       </div>
 
-      <button type="button" class="new-chat" id="newChatBtn">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 5v14M5 12h14"/>
-        </svg>
-        Новый чат
-      </button>
+      <div class="sidebar-action">
+        <button type="button" class="new-chat" id="newChatBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12h14"/>
+          </svg>
+          Новый чат
+        </button>
+      </div>
 
-      <div class="sb-section">История</div>
-      <div class="sb-list" id="sbList"></div>
+      <div class="sidebar-history">
+        <div class="sb-section">История</div>
+        <div class="sb-list" id="sbList"></div>
+      </div>
 
-      </aside>
+      <div class="sidebar-footer">
+        <div class="sb-sub-hint">🔒 Приватно · офлайн после загрузки</div>
+      </div>
+    </aside>
 
     <main class="chat-main">
       <header class="chat-top">
@@ -216,14 +224,15 @@
     </div>
   </div>
 
-    <!-- SETTINGS (glass) -->
-  <div class="settings-panel modal-overlay" id="settingsPanel">
-    <div class="settings-window modal">
-      <div class="settings-head modal-head">
+    <!-- SETTINGS side panel -->
+  <div class="settings-overlay" id="settingsOverlay"></div>
+  <div class="settings-panel" id="settingsPanel">
+    <div class="settings-window">
+      <div class="settings-head">
         <h2>Настройки</h2>
         <button type="button" class="modal-close" id="settingsClose" aria-label="Закрыть">×</button>
       </div>
-      <div class="settings-body modal-body">
+      <div class="settings-body">
 
         <!-- Подписка -->
         <div class="sub-hero" id="subBlock">
