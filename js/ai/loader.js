@@ -3,6 +3,7 @@
  * Web Worker + fallback, model status, model switch
  */
 import { MODEL, CDN, MODEL_ID } from '../core/config.js';
+import { installResumeFetch } from './resume-fetch.js';
 import {
   detectBestBackend,
   applyOnnxEnv,
@@ -34,6 +35,8 @@ import {
 } from './model-cache.js';
 
 export { getModelCacheSize, clearModelCache, hasModelInCache, getModelState, isStoragePersisted, isNativeApp };
+
+try { installResumeFetch(); } catch {}
 
 /** Prefer WASM on weak Android / low RAM / few cores (Samsung A-series etc.) */
 export function shouldPreferWasm() {
@@ -512,6 +515,7 @@ async function loadModelInner(modelId) {
   loadError = null;
   loadPct = 0;
   emitStatus();
+  try { await requestPersistentStorage(); } catch {}
 
   try {
     const prev = loadProgressMeta();

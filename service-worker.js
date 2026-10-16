@@ -2,8 +2,8 @@
  * NYVEX — service-worker.js
  * Relative paths → works on GitHub Pages (/nyvex/) and Capacitor
  */
-const SHELL = 'nyvex-shell-v27';
-const RUNTIME = 'nyvex-runtime-v27';
+const SHELL = 'nyvex-shell-v28';
+const RUNTIME = 'nyvex-runtime-v28';
 
 const PRECACHE = [
   './',
@@ -120,18 +120,24 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // CRITICAL: never intercept HuggingFace / CDN / model downloads
-  const host = url.hostname || '';
+  // CRITICAL: never intercept model CDN / HF / mirrors / ORT
+  const host = (url.hostname || '').toLowerCase();
+  const path = url.pathname || '';
   if (
-    host.includes('huggingface.co') ||
-    host.includes('hf-mirror.com') ||
-    host.includes('xethub.hf.co') ||
-    host.includes('hf.co') ||
-    host.includes('jsdelivr.net') ||
+    host.includes('huggingface') ||
+    host.includes('hf-mirror') ||
+    host.includes('xethub') ||
+    host.endsWith('.hf.co') ||
+    host.includes('jsdelivr') ||
     host.includes('unpkg.com') ||
-    host.includes('yookassa.ru')
+    host.includes('yookassa') ||
+    host.includes('cdn-lfs') ||
+    path.endsWith('.onnx') ||
+    path.endsWith('.onnx_data') ||
+    path.endsWith('.bin') ||
+    path.endsWith('.wasm')
   ) {
-    return; // browser network only
+    return; // browser network only — never SW cache model blobs
   }
 
   // Never cache payment APIs on our origin

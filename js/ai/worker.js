@@ -196,21 +196,20 @@ async function tryPipeline(remoteHost) {
 async function loadPipeline() {
   let lastErr = null;
   for (const mirror of MIRRORS) {
-    for (let attempt = 0; attempt < 2; attempt++) {
+    for (let attempt = 0; attempt < 5; attempt++) {
       try {
         post({
           type: 'progress',
           status: 'init',
-          message: attempt ? 'Повтор…' : 'Загрузка AI…',
-          pct: 2,
+          message: attempt ? ('Повтор ' + (attempt + 1) + '/5…') : 'Загрузка AI…',
+          pct: Math.min(5, 1 + attempt),
         });
         generator = await tryPipeline(mirror);
         device = backend === 'wasm-no-simd' ? 'WASM-compat' : 'WASM';
         return;
       } catch (err) {
         lastErr = err;
-        console.error('[nyvex-worker] load attempt', mirror, err);
-        // If SIMD error — force non-SIMD paths and retry
+        console.error('[nyvex-worker] load attempt', mirror, attempt + 1, err);
         const msg = String(err?.message || err || '');
         if (/SIMD|no available backend/i.test(msg) && env?.backends?.onnx?.wasm) {
           try {
@@ -221,11 +220,11 @@ async function loadPipeline() {
             backend = 'wasm-no-simd';
           } catch {}
         }
-        await sleep(800 * (attempt + 1));
+        await sleep(Math.min(20000, Math.pow(2, attempt) * 1000));
       }
     }
   }
-  throw lastErr || new Error('Не удалось загрузить AI');
+  throw lastErr || new Error('Не удалось загрузить AI. Проверьте интернет и Wi‑Fi.');
 }
 
 self.onmessage = async (e) => {

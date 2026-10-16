@@ -22,8 +22,8 @@ for folder, size in densities.items():
 gradle = Path("android/app/build.gradle")
 if gradle.exists():
     t = gradle.read_text()
-    t = re.sub(r"versionCode\s+\d+", "versionCode 29", t)
-    t = re.sub(r'versionName\s+"[^"]*"', 'versionName "2.5.1"', t)
+    t = re.sub(r"versionCode\s+\d+", "versionCode 30", t)
+    t = re.sub(r'versionName\s+"[^"]*"', 'versionName "2.5.2"', t)
     gradle.write_text(t)
     print("version 2.1.1 / code 23")
 print("icons ok")
