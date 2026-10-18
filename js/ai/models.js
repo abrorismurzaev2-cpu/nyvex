@@ -1,19 +1,19 @@
 /**
- * NYVEX — models for @xenova/transformers@2.17 (ONNX quantized, non-SIMD safe)
- * UI shows only: Быстрая / Умная / Мощная (never HF id)
+ * NYVEX — single universal model (UI never shows HF id)
  */
-import { getRecommendedModelId, getDeviceCaps } from './capabilities.js';
+const KEY_ACTIVE = 'nyvex_active_model';
+const KEY_DOWNLOADED = 'nyvex_downloaded_models';
 
 export const AVAILABLE_MODELS = [
   {
-    id: 'fast',
-    name: 'Быстрая',
-    description: 'Мгновенные ответы для простых задач',
-    hfId: 'Xenova/Qwen1.5-0.5B-Chat',
-    size: 350 * 1024 * 1024,
-    sizeLabel: '≈350 МБ',
-    quality: 2,
-    speed: 5,
+    id: 'default',
+    name: 'AI',
+    description: 'Локальная модель для чата',
+    hfId: 'onnx-community/Qwen2.5-0.5B-Instruct',
+    size: 400 * 1024 * 1024,
+    sizeLabel: '≈400 МБ',
+    quality: 3,
+    speed: 4,
     ramNeededGb: 1.5,
     minDeviceMemoryGb: 2,
     dtype: 'q4',
@@ -21,40 +21,7 @@ export const AVAILABLE_MODELS = [
     default: true,
     isDefault: true,
   },
-  {
-    id: 'smart',
-    name: 'Умная',
-    description: 'Баланс скорости и качества',
-    hfId: 'Xenova/Qwen1.5-1.8B-Chat',
-    size: 900 * 1024 * 1024,
-    sizeLabel: '≈900 МБ',
-    quality: 3,
-    speed: 4,
-    ramNeededGb: 2.5,
-    minDeviceMemoryGb: 3,
-    dtype: 'q4',
-    vendor: '',
-    default: false,
-  },
-  {
-    id: 'strong',
-    name: 'Мощная',
-    description: 'Максимальное качество для флагманов',
-    hfId: 'Xenova/Phi-3-mini-4k-instruct',
-    size: 2000 * 1024 * 1024,
-    sizeLabel: '≈2 ГБ',
-    quality: 4,
-    speed: 2,
-    ramNeededGb: 4,
-    minDeviceMemoryGb: 6,
-    dtype: 'q4',
-    vendor: '',
-    default: false,
-  },
 ];
-
-const KEY_ACTIVE = 'nyvex_active_model';
-const KEY_DOWNLOADED = 'nyvex_downloaded_models';
 
 export function getDeviceMemoryGb() {
   try {
@@ -64,69 +31,52 @@ export function getDeviceMemoryGb() {
   return 4;
 }
 
-export function isModelRecommended(model) {
-  return getDeviceMemoryGb() >= (model.minDeviceMemoryGb || 2);
+export function isModelRecommended() {
+  return true;
 }
 
 export function getRecommendedModel() {
-  const id = getRecommendedModelId();
-  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
+  return AVAILABLE_MODELS[0];
+}
+
+export function getRecommendedModelId() {
+  return 'default';
 }
 
 export function getActiveModel() {
-  let id = null;
-  try {
-    id = localStorage.getItem(KEY_ACTIVE);
-  } catch {}
-  // migrate old ids
-  if (id && String(id).startsWith('qwen')) id = null;
-  if (id && String(id).startsWith('llama')) id = null;
-  if (id && String(id).startsWith('tinyllama')) id = null;
-  if (!id) {
-    // Always start with weakest model for first download
-    id = 'fast';
-    try {
-      localStorage.setItem(KEY_ACTIVE, id);
-    } catch {}
-  }
-  return AVAILABLE_MODELS.find((m) => m.id === id) || AVAILABLE_MODELS[0];
+  return AVAILABLE_MODELS[0];
 }
 
 export function setActiveModel(id) {
-  if (!AVAILABLE_MODELS.some((m) => m.id === id)) return;
   try {
-    localStorage.setItem(KEY_ACTIVE, id);
+    localStorage.setItem(KEY_ACTIVE, 'default');
+  } catch {}
+}
+
+export function markModelDownloaded(id) {
+  try {
+    const raw = localStorage.getItem(KEY_DOWNLOADED);
+    const set = new Set(raw ? JSON.parse(raw) : []);
+    set.add(id || 'default');
+    localStorage.setItem(KEY_DOWNLOADED, JSON.stringify([...set]));
   } catch {}
 }
 
 export function isModelDownloaded(id) {
   try {
-    const arr = JSON.parse(localStorage.getItem(KEY_DOWNLOADED) || '[]');
-    return Array.isArray(arr) && arr.includes(id);
+    const raw = localStorage.getItem(KEY_DOWNLOADED);
+    const set = new Set(raw ? JSON.parse(raw) : []);
+    return set.has(id || 'default') || set.has('fast'); // migrate old id
   } catch {
     return false;
   }
 }
 
-export function markModelDownloaded(id) {
+export function listDownloadedModels() {
   try {
-    const arr = JSON.parse(localStorage.getItem(KEY_DOWNLOADED) || '[]');
-    if (!arr.includes(id)) {
-      arr.push(id);
-      localStorage.setItem(KEY_DOWNLOADED, JSON.stringify(arr));
-    }
-  } catch {}
+    const raw = localStorage.getItem(KEY_DOWNLOADED);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
-
-export function unmarkModelDownloaded(id) {
-  try {
-    const arr = JSON.parse(localStorage.getItem(KEY_DOWNLOADED) || '[]').filter((x) => x !== id);
-    localStorage.setItem(KEY_DOWNLOADED, JSON.stringify(arr));
-  } catch {}
-}
-
-export function getDefaultModel() {
-  return getRecommendedModel();
-}
-
-export { getDeviceCaps, getRecommendedModelId };

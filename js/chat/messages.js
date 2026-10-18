@@ -4,7 +4,6 @@
 import { $, escapeHtml, renderMarkdown, scrollBottom } from '../core/utils.js';
 import { isModelReady } from '../ai/loader.js';
 import { LOGO_SVG } from '../core/config.js';
-import { getCharacter, emotionEmoji, speakWithEmotion, detectEmotion, stopSpeaking } from '../ai/cosmo.js';
 
 export function renderWelcome() {
   const inner = $('chatInner');
@@ -13,8 +12,8 @@ export function renderWelcome() {
   inner.innerHTML = `
     <div class="welcome">
       <div class="welcome-logo">${LOGO_SVG}</div>
-      <div class="welcome-title">Мрр, привет!</div>
-      <div class="welcome-sub">Я Космо — чем помочь?</div>
+      <div class="welcome-title">Привет!</div>
+      <div class="welcome-sub">Чем могу помочь?</div>
       <div class="welcome-usp">🔒 Приватный AI · Работает офлайн</div>
       <div class="welcome-status ${ready ? '' : 'loading'}">
         <span class="st-dot"></span>
@@ -27,7 +26,6 @@ export function renderWelcome() {
         <button type="button" class="chip welcome-chip" data-chip="Переведи на английский: Привет, как дела?">Перевод</button>
       </div>
     </div>`;
-  // chips → fill composer
   inner.querySelectorAll('[data-chip]').forEach((btn) => {
     btn.addEventListener('click', () => {
       const input = document.getElementById('composerInput');
@@ -48,18 +46,12 @@ export function appendMessage(role, text, animate = true, meta = null) {
   msg.className = 'msg ' + role;
   if (!animate) msg.style.animation = 'none';
 
-  const ch = getCharacter();
-  const emotion = (role === 'ai' && meta && meta.emotion) ? meta.emotion : 'normal';
-  const emo = role === 'ai' ? emotionEmoji(emotion) : '';
   const avatar =
     role === 'ai'
       ? LOGO_SVG
       : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg>`;
 
-  const name =
-    role === 'ai'
-      ? `${ch.name} <span class="tag">${ch.tag}</span>${emo ? ' <span class="msg-emo" title="настроение">' + emo + '</span>' : ''}`
-      : 'Вы';
+  const name = role === 'ai' ? `NYVEX <span class="tag">ai</span>` : 'Вы';
 
   let thinkingHtml = '';
   if (role === 'ai' && meta?.thinking) {
@@ -77,7 +69,7 @@ export function appendMessage(role, text, animate = true, meta = null) {
   }
 
   msg.innerHTML = `
-    <div class="msg-av msg-avatar${role === 'ai' ? ' ai-bounce' : ''}">${avatar}</div>
+    <div class="msg-av msg-avatar">${avatar}</div>
     <div class="msg-body">
       <div class="msg-name">${name}</div>
       ${thinkingHtml}
@@ -88,10 +80,7 @@ export function appendMessage(role, text, animate = true, meta = null) {
           <button type="button" class="msg-act" data-act="copy" title="Копировать">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           </button>
-          <button type="button" class="msg-act" data-act="speak" title="Озвучить">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
-          </button>
-          <button type="button" class="msg-act" data-act="like" title="Нравится"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a3.13 3.13 0 0 1 3 3.88z"/></svg></button>
+          <button type="button" class="msg-act" data-act="like" title="Нравится"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 10v12M15 5.88L14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79 1.11L12 2h0a3.13 3.13 0 0 1 3 3.88z"/></svg></button>
           <button type="button" class="msg-act" data-act="dislike" title="Не нравится"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 14V2M9 18.12L10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22h0a3.13 3.13 0 0 1-3-3.88z"/></svg></button>
         </div>`
           : ''
@@ -119,12 +108,11 @@ export function showTyping(label) {
   const typing = document.createElement('div');
   typing.className = 'msg ai';
   typing.id = 'typingIndicator';
-  const ch = getCharacter();
-  const lbl = label || (ch.id === 'cosmo' ? 'Мрр… думаю…' : 'Думает…');
+  const lbl = label || 'Думает…';
   typing.innerHTML = `
-    <div class="msg-av msg-avatar speaking">${LOGO_SVG}</div>
+    <div class="msg-av msg-avatar">${LOGO_SVG}</div>
     <div class="msg-body">
-      <div class="msg-name">${ch.name} <span class="tag">${ch.tag}</span></div>
+      <div class="msg-name">NYVEX <span class="tag">ai</span></div>
       <div class="typing"><span></span><span></span><span></span></div>
       <div class="typing-label" id="typingLabel">${lbl}</div>
     </div>`;
@@ -141,7 +129,6 @@ export function removeTyping() {
   $('typingIndicator')?.remove();
 }
 
-/** Progressive reveal of AI answer */
 export async function appendMessageStream(text, meta = null) {
   const msg = appendMessage('ai', '', true, meta);
   const textEl = msg?.querySelector('[data-text]');

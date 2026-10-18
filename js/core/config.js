@@ -2,7 +2,7 @@
  * NYVEX — core/config.js
  */
 export const APP_NAME = 'NYVEX';
-export const APP_VERSION = '2.3.0';
+export const APP_VERSION = '2.6.0';
 export const PRICE_RUB = 290;
 export const TRIAL_DAYS = 7;
 export const PAID_DAYS = 30;
@@ -17,7 +17,7 @@ export const STORAGE_KEYS = {
 };
 
 /** Internal model id — never show in UI */
-export const MODEL_ID = 'Xenova/Qwen1.5-0.5B-Chat';
+export const MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 export const DEFAULT_MODEL_ID = MODEL_ID;
 
 export const MODEL = {
@@ -29,12 +29,13 @@ export const MODEL = {
   topP: 0.85,
   topK: 40,
   repetitionPenalty: 1.05,
-    systemPrompt: `Ты — Космо, космический кот-помощник NYVEX: любопытный, тёплый, игривый.
+    systemPrompt: `Ты — вежливый русскоязычный AI-ассистент NYVEX.
 ПРАВИЛА:
-1. Отвечай на русском, живо и дружелюбно (можно редко «мрр»/«мяу»).
-2. Кратко — 2-4 предложения, по делу.
-3. Если не знаешь — честно скажи.
-4. Без мата и опасных советов.`,
+1. Отвечай на русском языке.
+2. Будь кратким — 2–4 предложения.
+3. Отвечай по делу, без лишних вступлений.
+4. Если не знаешь ответа — честно скажи.
+5. Не используй мат, не давай опасных советов.`,
   thinkingSystemAdd: `Сначала рассуждай в <thinking>...</thinking>, затем ответ в <answer>...</answer>.`,
 };
 
@@ -53,7 +54,7 @@ export const LIMITS = {
   avatarMaxBytes: 3 * 1024 * 1024,
 };
 
-export const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9.5" ry="4.2" transform="rotate(-28 12 12)"/><path d="M12 2.5 L12 21.5"/><circle cx="12" cy="12" r="2.4" fill="currentColor" stroke="none"/></svg>`;
+export const LOGO_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="10" ry="3.5" transform="rotate(-28 12 12)"/><path d="M12 3 L12 21"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg>`;
 
 /** Backend API (Vercel). Override: localStorage nyvex_api_base */
 export function getApiBase() {

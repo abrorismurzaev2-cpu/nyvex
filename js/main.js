@@ -8,7 +8,6 @@ import { initToast, toast } from './core/toast.js';
 import { $ } from './core/utils.js';
 import { loadModel, cancelLoad, isModelReady, isLoading, getModelState } from './ai/loader.js';
 import { setActiveModel, isModelDownloaded, getActiveModel } from './ai/models.js';
-import { initCosmoVoice } from './ai/cosmo.js';
 import { isNativeApp } from './core/platform.js';
 import { loadHistory, initChatMenu, newChat as createChat } from './chat/history.js';
 import { initControls } from './chat/controls.js';
@@ -41,7 +40,6 @@ export function enterApp() {
 }
 
 async function boot() {
-  try { initCosmoVoice(); } catch {}
   try {
     initRouter();
     initToast();
@@ -137,7 +135,7 @@ async function continueModelBootInner() {
     try {
       const active = getActiveModel();
       if (!isModelDownloaded(active.id)) {
-        setActiveModel('fast');
+        setActiveModel('default');
       }
     } catch {}
     // Model splash: logo-only if cached, full progress if first download

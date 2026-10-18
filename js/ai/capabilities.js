@@ -78,15 +78,11 @@ export function backendLabel(backend) {
  * Recommended model id from AVAILABLE_MODELS catalog
  */
 export function getRecommendedModelId() {
-  const { memory: ram, threads: cores, isMobile, webgpu } = getDeviceCaps();
-  // Default path: weakest model for reliability / first download
-  if (ram < 6 || cores < 6 || isMobile || !webgpu) return 'fast';
-  return 'smart';
+  return 'default';
 }
 
 export function getRecommendReason() {
   const id = getRecommendedModelId();
-  if (id === 'fast') return 'Ваше устройство: рекомендуем «Быструю» модель';
-  if (id === 'smart') return 'Ваше устройство: рекомендуем «Умную» модель';
+  return 'Одна локальная модель для всех устройств';
   return 'Ваше устройство: можете использовать любую модель';
 }

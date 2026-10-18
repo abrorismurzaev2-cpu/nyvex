@@ -1213,3 +1213,29 @@ html, body {
     margin-right: auto;
   }
 }
+
+/* ========== Simple chat adaptive 2026-10 ========== */
+@media (max-width: 900px) {
+  .sidebar {
+    position: fixed !important;
+    z-index: 80;
+    transform: translateX(-105%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .sidebar.open {
+    transform: translateX(0) !important;
+  }
+  .sb-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+.menu-btn, .icon-btn, .send-btn, .new-chat {
+  min-width: 44px;
+  min-height: 44px;
+}
+body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

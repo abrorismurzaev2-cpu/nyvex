@@ -8,7 +8,7 @@ installResumeFetch();
 
 let pipeline;
 let env;
-let MODEL_ID = 'Xenova/Qwen1.5-0.5B-Chat';
+let MODEL_ID = 'onnx-community/Qwen2.5-0.5B-Instruct';
 let DTYPE = 'q4';
 let generator = null;
 let device = 'wasm';
